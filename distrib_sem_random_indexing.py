@@ -33,8 +33,7 @@ import sklearn.decomposition as dec
 
 class distrib_semantics():
     
-    def __init__(self, filenames):
-        self.filenames = filenames
+    def __init__(self):
         self.vocabulary = []
         self.i_vectors = []
         self.word_vectors = []   
@@ -91,9 +90,7 @@ class distrib_semantics():
                 self.vocabulary.append(word)
                 self.i_vectors.append(self.rand_index_vector())
                 self.word_vectors.append(np.zeros(1024))
-                
-                self.weights.append([0, 1, 1])
-                
+                self.weights.append([0, 1, 1])        
             #create weight tools
             else:
                 self.weights[self.vocabulary.index(word)][1] += 1
@@ -101,9 +98,8 @@ class distrib_semantics():
                     self.weights[self.vocabulary.index(word)][2] += 1
                     added.append(word)   
                 
-    def create_vectors(self):
-        
-        for filename in self.filenames:
+    def create_vectors(self, filenames):
+        for filename in filenames:
             with open(filename) as training:
                 for row in training:
                      #separate row into sentences
@@ -127,6 +123,10 @@ class distrib_semantics():
                             
                             self.superlist.append(formatted_sentence)
         
+        self.apply_weights()
+        self.create_word_vectors()
+                                
+    def apply_weights(self):        
         ###### Differrent weights if word is behind/after???
         ##Create weights for indexes
         for i, w in enumerate(self.weights):
@@ -134,6 +134,7 @@ class distrib_semantics():
             idf = math.log(self.sentences_total/w[2])
             self.weights[i][0] = (w[1]/self.total_words)*idf
             
+    def create_word_vectors(self):
         window = 1 #how many words before/after to consider being a part of the context
         #weight for sliding window > 1
         #create contexts
@@ -155,6 +156,8 @@ class distrib_semantics():
                         self.word_vectors[self.vocabulary.index(word)] += (self.i_vectors[next_word] * self.weights[next_word][0])
                     except:
                         pass
+        #empty sentence list
+        self.superlist = []
            
     
     #######################################################
@@ -170,33 +173,22 @@ class distrib_semantics():
             i_word1 = self.word_vectors[self.vocabulary.index(word1)]
             i_word2 = self.word_vectors[self.vocabulary.index(word2)]
             
-#        x = normalize(i_word1.reshape(1,-1), norm='l1')
-#        y = normalize(i_word2.reshape(1,-1), norm='l1')
-#        w1 = i_word1.reshape(32,32)
-#        w2 = i_word2.reshape(32,32)
-        w1 = i_word1
-        w2 = i_word2
-#        print(len(w1))
-        
-        trunc_svd = dec.TruncatedSVD(n_components=100, algorithm='arpack')
-#        trunc_svd.fit(w1, w2)
-        trunc_svd.fit(self.word_vectors)
-        
-        svd_word1 = trunc_svd.transform(w1.reshape(1,-1))
-        svd_word2 = trunc_svd.transform(w2.reshape(1,-1))
-#        print(svd_word1[0])
-#        print(svd_word2[0])
-        print(d.cosine_similarity(svd_word1.reshape(1,-1), svd_word2.reshape(1,-1)), 'cosine SVDed')
-        
-        print(len(self.word_vectors), len([0 for x in self.word_vectors]))        
+
+#        w1 = i_word1
+#        w2 = i_word2
+        print(self.weights[self.vocabulary.index(word2)])
+#        trunc_svd = dec.TruncatedSVD(n_components=100, algorithm='arpack')
+##        trunc_svd.fit(w1, w2)
+#        trunc_svd.fit(self.word_vectors)
+#        
+#        svd_word1 = trunc_svd.transform(w1.reshape(1,-1))
+#        svd_word2 = trunc_svd.transform(w2.reshape(1,-1))
+#        
+#        print(d.cosine_similarity(svd_word1.reshape(1,-1), svd_word2.reshape(1,-1)), 'cosine SVDed')
         
         ### Check definition and implementation
 #        cosine_sim = np.dot(i_word1,i_word2)/la.norm(i_word1)/la.norm(i_word2)
-
         cosine_sim = d.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
-
-        print(self.weights[self.vocabulary.index(word1)])
-        print(self.weights[self.vocabulary.index(word2)])
         
         return(cosine_sim[0][0])        
 
@@ -232,43 +224,99 @@ class distrib_semantics():
                 
         return [(x, y[0][0]) for x, y in zip(word_top,top)]
         
+        
     def save(self):
-        outfile1 = '/home/usr1/PythonPrg/project/np_1.npy'
-        outfile2 = '/home/usr1/PythonPrg/project/np_2.npy'
-        outfile3 = '/home/usr1/PythonPrg/project/np_3.npy'
-        outfile4 = '/home/usr1/PythonPrg/project/np_4.npy'
+        outfile1 = '/home/usr1/Python_Prg_1/SU_PY/project/np_1.npy'
+        outfile2 = '/home/usr1/Python_Prg_1/SU_PY/project/np_2.npy'
+        outfile3 = '/home/usr1/Python_Prg_1/SU_PY/project/np_3.npy'
+        outfile4 = '/home/usr1/Python_Prg_1/SU_PY/project/np_4.npy'
+        outfile5 = '/home/usr1/Python_Prg_1/SU_PY/project/np_5.npy'
+        outfile6 = '/home/usr1/Python_Prg_1/SU_PY/project/np_6.npy'
         
-        
+        np.save(outfile1, self.vocabulary)
+        np.save(outfile2, self.word_vectors)
+        np.save(outfile3, self.i_vectors)
+        np.save(outfile4, self.weights)
+        np.save(outfile5, self.total_words)
+        np.save(outfile6, self.sentences_total)
     
     def load(self):
-        pass
+        self.vocabulary = list(np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_1.npy'))
+        self.word_vectors = list(np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_2.npy'))
+        self.i_vectors = list(np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_3.npy'))
+        self.weights = list(np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_4.npy'))
+        self.total_words = np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_5.npy')
+        self.sentences_total = np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_6.npy')
     
+    def update(self, path):
+        self.create_vectors([path])
+        
+    def info(self):
+        print(len(self.vocabulary), 'word in vocabulary')
+        print(self.sentences_total, 'total sentences')
+        print(self.total_words, 'total words')
+        
+            
     
 def main():
-#    x = distrib_semantics(['/home/usr1/PythonPrg/project/gutenberg/austen-emma.txt'])    
-    x = distrib_semantics(['/home/usr1/PythonPrg/project/test_doc_1.txt'])
-    x.create_vectors()
+#    x = distrib_semantics(['/home/usr1/Python_Prg_1/SU_PY/project/gutenberg/austen-emma.txt'])    
+    x = distrib_semantics()
+
     #,'/home/usr1/PythonPrg/project/gutenberg/austen-emma.txt','/home/usr1/PythonPrg/project/gutenberg/austen-sense.txt'
     
     print("Welcome to Distributial Semantics with Random Indexing")
-    print("Type 'sim word1 word2' for similarity between two words, 'top word' for top 3 similar words and 'exit' to quit")
     
-    print("Enter new data sourcce by typing 'data path', load by typing 'load path'")
-#    while True:
-#        choice = input('> ')  
-#        input_args = choice.lower().split()
-#        if input_args[0] == 'sim':
-#           print(x.find_similarity(input_args[1], input_args[2]))
-#        elif input_args[0] == 'top':
-#           print(x.similarity_top(input_args[1]))
-#        elif input_args[0] == 'exit':
-#           break
-#        else:
-#           print("Unrecognized command")
+    print("Enter new data source by typing 'data', load by typing 'load'")
+    setup = input('> ')
+    setup = setup.split()
+    if setup[0] == 'data':
+        x.create_vectors(['/home/usr1/Python_Prg_1/SU_PY/project/test_doc_1.txt'])
 
+    elif setup[0] == 'load':
+        x.load()
+    
+    
+    print("Type 'sim word1 word2' for similarity between two words, 'top word' for top 3 similar words and 'exit' to quit")
+    while True:
+        choice = input('> ')  
+        input_args = choice.split()
+        
+        if input_args[0] == 'sim':
+           sim = x.find_similarity(input_args[1].lower(), input_args[2].lower())
+           print('cosine similarity between', input_args[1], 'and',input_args[2] ,'is\n', sim, '\n')
+           
+        elif input_args[0] == 'top':
+           top = x.similarity_top(input_args[1].lower())
+           print('top similar words for', input_args[1], 'is:')
+           for x, y in top:
+               print(x, y)
+               
+        elif input_args[0] == 'exit':
+           break
+       
+        elif input_args[0] == 'save':
+            x.save()
+            
+        elif input_args[0] == 'update':
+            x.update(input_args[1])
+            
+        elif input_args[0] == 'info':
+            x.info()
+            
+        elif input_args[0] == 'help':
+            print("'sim word1 word2' for similarity")
+            print("'top word' for top 3 similar words")        
+            print("'save' to save current data")
+            print("'update path' to update the data with a new textfile")
+            print("'exit' to quit")
+        
+        else:
+           print("Unrecognized command")
+
+    
         #warm-nominal
-    sim = x.find_similarity('language', 'the')
-    print(sim)
+#    sim = x.find_similarity('language', 'the')
+#    print(sim)
 #    top = x.similarity_top('language')Women
 #    print(top)
     
