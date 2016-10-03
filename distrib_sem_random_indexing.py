@@ -92,7 +92,7 @@ class distrib_semantics():
                 self.i_vectors.append(self.rand_index_vector())
                 self.word_vectors.append(np.zeros(1024))
                 
-                self.weights.append([0, 1, 1, 0])
+                self.weights.append([0, 1, 1])
                 
             #create weight tools
             else:
@@ -131,12 +131,11 @@ class distrib_semantics():
         ##Create weights for indexes
         for i, w in enumerate(self.weights):
             #tf-idf weight
-            self.weights[i][0] = (w[1]/self.total_words)*math.log(self.sentences_total/w[2])
-            #tfidf2
-#            self.weights[i][3] = 1+math.log(w[1]/self.total_words)*math.log(1 + self.sentences_total/w[2])
-                        
+            idf = math.log(self.sentences_total/w[2])
+            self.weights[i][0] = (w[1]/self.total_words)*idf
             
         window = 1 #how many words before/after to consider being a part of the context
+        #weight for sliding window > 1
         #create contexts
         for sentence in self.superlist:
             for i, word in enumerate(sentence):
@@ -177,29 +176,29 @@ class distrib_semantics():
 #        w2 = i_word2.reshape(32,32)
         w1 = i_word1
         w2 = i_word2
-        print(len(w1))
+#        print(len(w1))
         
-        trunc_svd = dec.TruncatedSVD(n_components=30, algorithm='arpack')
+        trunc_svd = dec.TruncatedSVD(n_components=100, algorithm='arpack')
 #        trunc_svd.fit(w1, w2)
         trunc_svd.fit(self.word_vectors)
         
         svd_word1 = trunc_svd.transform(w1.reshape(1,-1))
         svd_word2 = trunc_svd.transform(w2.reshape(1,-1))
-#        print(svd_word1)
-        print(svd_word1)
-        print(svd_word2)
+#        print(svd_word1[0])
+#        print(svd_word2[0])
         print(d.cosine_similarity(svd_word1.reshape(1,-1), svd_word2.reshape(1,-1)), 'cosine SVDed')
         
+        print(len(self.word_vectors), len([0 for x in self.word_vectors]))        
+        
         ### Check definition and implementation
-        cosine_sim = np.dot(i_word1,i_word2)/la.norm(i_word1)/la.norm(i_word2)
+#        cosine_sim = np.dot(i_word1,i_word2)/la.norm(i_word1)/la.norm(i_word2)
 
-        print(d.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1)), 'cosine')
-
+        cosine_sim = d.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
 
         print(self.weights[self.vocabulary.index(word1)])
         print(self.weights[self.vocabulary.index(word2)])
-
-        return(cosine_sim)        
+        
+        return(cosine_sim[0][0])        
 
         #looks alot like zipf
 
@@ -233,16 +232,28 @@ class distrib_semantics():
                 
         return [(x, y[0][0]) for x, y in zip(word_top,top)]
         
+    def save(self):
+        outfile1 = '/home/usr1/PythonPrg/project/np_1.npy'
+        outfile2 = '/home/usr1/PythonPrg/project/np_2.npy'
+        outfile3 = '/home/usr1/PythonPrg/project/np_3.npy'
+        outfile4 = '/home/usr1/PythonPrg/project/np_4.npy'
         
+        
+    
+    def load(self):
+        pass
+    
+    
 def main():
-#    x = distrib_semantics('/home/usr1/Python_Prg_1/SU_PY/project/gutenberg/austen-emma.txt')    
+#    x = distrib_semantics(['/home/usr1/PythonPrg/project/gutenberg/austen-emma.txt'])    
     x = distrib_semantics(['/home/usr1/PythonPrg/project/test_doc_1.txt'])
     x.create_vectors()
     #,'/home/usr1/PythonPrg/project/gutenberg/austen-emma.txt','/home/usr1/PythonPrg/project/gutenberg/austen-sense.txt'
     
-#    print("Welcome to Distributial Semantics with Random Indexing")
-#    print("Type 'sim word1 word2' for similarity between two words, 'top word' for top 3 similar words and 'exit' to quit")
-#    
+    print("Welcome to Distributial Semantics with Random Indexing")
+    print("Type 'sim word1 word2' for similarity between two words, 'top word' for top 3 similar words and 'exit' to quit")
+    
+    print("Enter new data sourcce by typing 'data path', load by typing 'load path'")
 #    while True:
 #        choice = input('> ')  
 #        input_args = choice.lower().split()
@@ -256,7 +267,7 @@ def main():
 #           print("Unrecognized command")
 
         #warm-nominal
-    sim = x.find_similarity('languages', 'language')
+    sim = x.find_similarity('language', 'the')
     print(sim)
 #    top = x.similarity_top('language')Women
 #    print(top)
