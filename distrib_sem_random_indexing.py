@@ -31,7 +31,6 @@ class distrib_semantics():
         self.i_vectors = []
         self.word_vectors = []   
         self.superlist = []
-        self.svded = []
         
         self.documents = 0
         self.weights = []
@@ -269,13 +268,13 @@ class distrib_semantics():
                 print('in', self.weights[self.vocabulary.index(arg)][2], 'sentences')
                 print('total weight of word:', self.weights[self.vocabulary.index(arg)][0])
                 print('word in documents:', self.weights[self.vocabulary.index(arg)][3:])
-                print('idf', math.log(self.documents/len(self.weights[self.vocabulary.index(arg)][3:])))
+                print('idf', math.log(self.documents/len(self.weights[self.vocabulary.index(arg)][3:])), '\n')
 
         else:
             print(len(self.vocabulary), 'unique words in vocabulary')
             print(self.sentences_total, 'total sentences')
             print(self.total_words, 'total words')
-            print(self.documents, 'total documents')
+            print(self.documents, 'total documents\n')
             
     
 def main():
@@ -295,13 +294,13 @@ def main():
             x.load()
             break
         elif setup[0] == 'new':
-            x.create_vectors(['/home/usr1/PythonPrg/project/test_doc_1.txt'])
+            x.create_vectors(['/home/usr1/Python_Prg_1/SU_PY/project/test_doc_1.txt'])
             break
         else:
             print('Invalid input')
         
     #User interface after data has loaded
-    print("Type 'sim word1 word2' for similarity between two words, 'top word' for top 3 similar words and 'exit' to quit")
+    print("Type 'sim <word1> <word2>' for similarity between two words, 'top <word>' for top 3 similar words and 'exit' to quit")
     while True:
         choice = input('> ')  
         input_args = choice.split()
@@ -323,7 +322,6 @@ def main():
         #fix error output
         elif input_args[0] == 'top':
             try:
-                
                 top_res = x.similarity_top(input_args[1].lower())
                 if top_res == str(top_res):
                     print(top_res)
@@ -332,7 +330,7 @@ def main():
                     for i, (x, y) in enumerate(top_res):
                         print(i+1, x, y)
             except:
-                print("Invalid input for top'")
+                print("Invalid input for 'top'")
                
         elif input_args[0] == 'exit':
            break
@@ -356,11 +354,12 @@ def main():
             x.graph()
             
         elif input_args[0] == 'help':
-            print("sim word1 word2' for similarity")
-            print("'top word' for top 3 similar words")        
+            print("sim <word1> <word2>' for similarity")
+            print("'top <word>' for top 3 similar words")        
             print("'save' to save current data")
-            print("'update path' to update the data with a new textfile")
+            print("'update <path>' to update the data with a new textfile")
             print("'info' for info about the data")
+            print("'info <word> for info about the word'")
             print("'exit' to quit")
         
         else:
