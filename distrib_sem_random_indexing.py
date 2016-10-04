@@ -22,7 +22,6 @@ Random indexing:
        
 """
 import numpy as np
-from numpy import linalg as la
 import re
 import random
 import math
@@ -40,6 +39,7 @@ class distrib_semantics():
         self.superlist = []
         self.svded = []
         
+        self.documents = 0
         self.weights = []
         self.total_words = 0
         self.sentences_total = 0
@@ -90,36 +90,48 @@ class distrib_semantics():
                 self.vocabulary.append(word)
                 self.i_vectors.append(self.rand_index_vector())
                 self.word_vectors.append(np.zeros(1024))
-                self.weights.append([0, 1, 1])        
+                self.weights.append([0, 1, 1, self.documents])        
             #create weight tools
             else:
                 self.weights[self.vocabulary.index(word)][1] += 1
+                
+                if self.documents in self.weights[self.vocabulary.index(word)][3:]:
+                    pass
+                else:
+                    self.weights[self.vocabulary.index(word)].append(self.documents)
+                
                 if word not in added:
                     self.weights[self.vocabulary.index(word)][2] += 1
                     added.append(word)   
                 
     def create_vectors(self, filenames):
         for filename in filenames:
-            with open(filename) as training:
-                for row in training:
-                     #separate row into sentences
-                     row = row.strip().split('. ')
-                     for sentence in row:
-                        sentence = sentence.split()
-                        #format sentence
-                        #remove special things before/after word
-                        formatted_sentence = [w.strip().lower() for w in sentence]
-                        #only add sentences longer than 0 words    
-                        if len(formatted_sentence) > 0:
-                            #create index_vector for word
-                            #currently takes a senttence, change so it takes a word???
-                            self.vectorizer(formatted_sentence)
-                            
-                            #remove [''] and '' elements
-                            while '' in formatted_sentence:
-                                formatted_sentence.remove('')
-                            
-                            self.superlist.append(formatted_sentence)
+            try:
+                with open(filename) as training:
+                    self.documents += 1
+                    for row in training:
+                         #separate row into sentences
+                         row = row.strip().split('. ')
+                         for sentence in row:
+                            sentence = sentence.split()
+                            #format sentence
+                            #remove special things before/after word
+                            formatted_sentence = [w.strip().lower() for w in sentence]
+                            #only add sentences longer than 0 words    
+                            if len(formatted_sentence) > 0:
+                                #create index_vector for word
+                                #currently takes a senttence, change so it takes a word???
+                                self.vectorizer(formatted_sentence)
+                                
+                                #remove [''] and '' elements
+                                while '' in formatted_sentence:
+                                    formatted_sentence.remove('')
+                                
+                                self.superlist.append(formatted_sentence)
+            
+            except FileNotFoundError:
+                print("File not found, try again")
+                
         
         self.apply_weights()
         self.create_word_vectors()
@@ -129,6 +141,8 @@ class distrib_semantics():
         ##Create weights for indexes
         for i, w in enumerate(self.weights):
             #tf-idf weight
+            #real idf
+            idf1 = math.log(self.documents/len(self.weights[i][3:]))
             idf = math.log(self.sentences_total/w[2])
             self.weights[i][0] = (w[1]/self.total_words)*idf
             
@@ -209,12 +223,13 @@ class distrib_semantics():
         
         
     def save(self):
-        outfile1 = '/home/usr1/Python_Prg_1/SU_PY/project/np_1.npy'
-        outfile2 = '/home/usr1/Python_Prg_1/SU_PY/project/np_2.npy'
-        outfile3 = '/home/usr1/Python_Prg_1/SU_PY/project/np_3.npy'
-        outfile4 = '/home/usr1/Python_Prg_1/SU_PY/project/np_4.npy'
-        outfile5 = '/home/usr1/Python_Prg_1/SU_PY/project/np_5.npy'
-        outfile6 = '/home/usr1/Python_Prg_1/SU_PY/project/np_6.npy'
+        outfile1 = '/home/usr1/git/dist_data/np_1.npy'
+        outfile2 = '/home/usr1/git/dist_data/np_2.npy'
+        outfile3 = '/home/usr1/git/dist_data/np_3.npy'
+        outfile4 = '/home/usr1/git/dist_data/np_4.npy'
+        outfile5 = '/home/usr1/git/dist_data/np_5.npy'
+        outfile6 = '/home/usr1/git/dist_data/np_6.npy'
+        outfile7 = '/home/usr1/git/dist_data/np_7.npy'
         
         np.save(outfile1, self.vocabulary)
         np.save(outfile2, self.word_vectors)
@@ -222,23 +237,39 @@ class distrib_semantics():
         np.save(outfile4, self.weights)
         np.save(outfile5, self.total_words)
         np.save(outfile6, self.sentences_total)
+        np.save(outfile7, self.documents)
     
     def load(self):
-        self.vocabulary = list(np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_1.npy'))
-        self.word_vectors = list(np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_2.npy'))
-        self.i_vectors = list(np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_3.npy'))
-        self.weights = list(np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_4.npy'))
-        self.total_words = np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_5.npy')
-        self.sentences_total = np.load('/home/usr1/Python_Prg_1/SU_PY/project/np_6.npy')
+        self.vocabulary = list(np.load('/home/usr1/git/dist_data/np_1.npy'))
+        self.word_vectors = list(np.load('/home/usr1/git/dist_data/np_2.npy'))
+        self.i_vectors = list(np.load('/home/usr1/git/dist_data/np_3.npy'))
+        self.weights = list(np.load('/home/usr1/git/dist_data/np_4.npy'))
+        self.total_words = np.load('/home/usr1/git/dist_data/np_5.npy')
+        self.sentences_total = np.load('/home/usr1/git/dist_data/np_6.npy')
+        self.documents = np.load('/home/usr1/git/dist_data/np_7.npy')
     
     def update(self, path):
         self.create_vectors([path])
         
-    def info(self):
-        print(len(self.vocabulary), 'word in vocabulary')
-        print(self.sentences_total, 'total sentences')
-        print(self.total_words, 'total words')
-        
+    def info(self, arg):
+
+        if arg != None:
+            if arg not in self.vocabulary:
+                print(arg, 'does not exist')
+            else:
+                print(arg)
+                print('occurences:', self.weights[self.vocabulary.index(arg)][1])
+                print('in', self.weights[self.vocabulary.index(arg)][2], 'sentences')
+                print('total weight of word:', self.weights[self.vocabulary.index(arg)][0])
+                print('word in documents:', self.weights[self.vocabulary.index(arg)][3:])
+                print('idf', math.log(self.documents/len(self.weights[self.vocabulary.index(arg)][3:])))
+
+        else:
+
+            print(len(self.vocabulary), 'unique words in vocabulary')
+            print(self.sentences_total, 'total sentences')
+            print(self.total_words, 'total words')
+            print(self.documents, 'total documents')
             
     
 def main():
@@ -249,32 +280,47 @@ def main():
     
     print("Welcome to Distributial Semantics with Random Indexing")
     
-    print("Enter new data source by typing 'data', load by typing 'load'")
-    setup = input('> ')
-    setup = setup.split()
-    if setup[0] == 'data':
-        x.create_vectors(['/home/usr1/Python_Prg_1/SU_PY/project/test_doc_1.txt'])
-
-    elif setup[0] == 'load':
-        x.load()
-    
-    
+    #load data
+    while True:
+        print("Enter new data source by typing 'new path', load by typing 'load'")
+        setup = input('> ')
+        setup = setup.split()
+        if setup[0] == 'load':
+            x.load()
+            break
+        elif setup[0] == 'new':
+            x.create_vectors(['/home/usr1/PythonPrg/project/test_doc_1.txt'])
+            break
+        else:
+            print('Invalid input')
+        
+    #User interface after data has loaded
     print("Type 'sim word1 word2' for similarity between two words, 'top word' for top 3 similar words and 'exit' to quit")
     while True:
         choice = input('> ')  
         input_args = choice.split()
         
+        if input_args == '':
+            print('Please try again')
         #fix error output
-        if input_args[0] == 'sim':
-           sim = x.find_similarity(input_args[1].lower(), input_args[2].lower())
-           print('Cosine similarity between', input_args[1], 'and',input_args[2] ,'is\n', sim, '\n')
-           
+        elif input_args[0] == 'sim':
+            try:
+                sim = x.find_similarity(input_args[1].lower(), input_args[2].lower())
+                if sim == str(sim):
+                    print(sim)
+                else:
+                    print('Cosine similarity between', input_args[1], 'and',input_args[2] ,'is\n', sim, '\n')
+            except:
+                print('Invalid input')
         #fix error output
         elif input_args[0] == 'top':
-           top = x.similarity_top(input_args[1].lower())
-           print('Top similar words for', input_args[1], 'is:')
-           for x, y in top:
-               print(x, y)
+            try:
+                top = x.similarity_top(input_args[1].lower())
+                print('Top similar words for', input_args[1], 'is:')
+                for x, y in top:
+                    print(x, y)
+            except:
+                print('Invalid input')
                
         elif input_args[0] == 'exit':
            break
@@ -282,12 +328,17 @@ def main():
         elif input_args[0] == 'save':
             x.save()
         
-        #fix error in path
         elif input_args[0] == 'update':
-            x.update(input_args[1])
+            try:
+                x.update(input_args[1])
+            except:
+                print('Please provide a path')
             
         elif input_args[0] == 'info':
-            x.info()
+            try:
+                x.info(input_args[1].lower())
+            except:
+                x.info(None)
             
         elif input_args[0] == 'help':
             print("'sim word1 word2' for similarity")
@@ -299,14 +350,6 @@ def main():
         
         else:
            print("Unrecognized command")
-
-    
-        #warm-nominal
-#    sim = x.find_similarity('language', 'the')
-#    print(sim)
-#    top = x.similarity_top('language')Women
-#    print(top)
-    
     
 if __name__ == '__main__':
     main()
