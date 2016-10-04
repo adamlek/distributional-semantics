@@ -15,10 +15,6 @@ Random indexing:
     (2): 
         scan text
             each time a word w occurs in a context, add that contexts index vector to the vector of that word
-            
-    Init
-        summ of vectors
-        normalize vec
        
 """
 import numpy as np
@@ -276,7 +272,6 @@ class distrib_semantics():
                 print('idf', math.log(self.documents/len(self.weights[self.vocabulary.index(arg)][3:])))
 
         else:
-
             print(len(self.vocabulary), 'unique words in vocabulary')
             print(self.sentences_total, 'total sentences')
             print(self.total_words, 'total words')
@@ -328,10 +323,14 @@ def main():
         #fix error output
         elif input_args[0] == 'top':
             try:
+                
                 top_res = x.similarity_top(input_args[1].lower())
-                print('Top similar words for', input_args[1], 'is:')
-                for i, (x, y) in enumerate(top_res):
-                    print(i+1, x, y)
+                if top_res == str(top_res):
+                    print(top_res)
+                else:
+                    print('Top similar words for', input_args[1], 'is:')
+                    for i, (x, y) in enumerate(top_res):
+                        print(i+1, x, y)
             except:
                 print("Invalid input for top'")
                
