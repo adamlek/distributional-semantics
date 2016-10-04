@@ -44,8 +44,8 @@ class distrib_semantics():
         self.total_words = 0
         self.sentences_total = 0
     
+    #create an index vector for each word
     def rand_index_vector(self):
-#        arr = np.random.random(1024)
         arr = np.zeros(1024)        
 
         for i in range(0, 4):
@@ -76,11 +76,11 @@ class distrib_semantics():
             if word.lstrip('-').isdigit():
                 word = 'NUM'
                 formatted_sentence[i] = 'NUM'
-            ### NUMS for '5-6' etc
+            ### NUMS -> '5-6' etc
             elif re.match('\d+-\d+', word) is not None:
                 word = 'NUMS'
                 formatted_sentence[i] = 'NUMS'
-            #percentages for 12% etc
+            #percentages -> 12% etc
             elif '%' in word:
                 word = 'PERC'
                 formatted_sentence[i] = 'PERC'
@@ -104,14 +104,12 @@ class distrib_semantics():
                 for row in training:
                      #separate row into sentences
                      row = row.strip().split('. ')
-    #                 print(row)
                      for sentence in row:
                         sentence = sentence.split()
                         #format sentence
                         #remove special things before/after word
                         formatted_sentence = [w.strip().lower() for w in sentence]
-                        #only add sentences longer than 0 words
-                        #?create lemmas??? better representation     
+                        #only add sentences longer than 0 words    
                         if len(formatted_sentence) > 0:
                             #create index_vector for word
                             #currently takes a senttence, change so it takes a word???
@@ -156,7 +154,7 @@ class distrib_semantics():
                         self.word_vectors[self.vocabulary.index(word)] += (self.i_vectors[next_word] * self.weights[next_word][0])
                     except:
                         pass
-        #empty sentence list
+        #empty sentence list incase update command
         self.superlist = []
            
     
@@ -165,6 +163,7 @@ class distrib_semantics():
     #######################################################
     def find_similarity(self, word1, word2):
         
+        #check if the words exists
         if word1 not in self.vocabulary:
             return ' '.join([word1, "does not exist, try again"])
         elif word2 not in self.vocabulary:
@@ -173,32 +172,16 @@ class distrib_semantics():
             i_word1 = self.word_vectors[self.vocabulary.index(word1)]
             i_word2 = self.word_vectors[self.vocabulary.index(word2)]
             
-
-#        w1 = i_word1
-#        w2 = i_word2
-        print(self.weights[self.vocabulary.index(word2)])
-#        trunc_svd = dec.TruncatedSVD(n_components=100, algorithm='arpack')
-##        trunc_svd.fit(w1, w2)
-#        trunc_svd.fit(self.word_vectors)
-#        
-#        svd_word1 = trunc_svd.transform(w1.reshape(1,-1))
-#        svd_word2 = trunc_svd.transform(w2.reshape(1,-1))
-#        
-#        print(d.cosine_similarity(svd_word1.reshape(1,-1), svd_word2.reshape(1,-1)), 'cosine SVDed')
-        
         ### Check definition and implementation
-#        cosine_sim = np.dot(i_word1,i_word2)/la.norm(i_word1)/la.norm(i_word2)
         cosine_sim = d.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
         
         return(cosine_sim[0][0])        
-
-        #looks alot like zipf
 
     #top 3
     def similarity_top(self, word):
         
         if word not in self.vocabulary:
-            return ' '.join([word, "does not exist"])
+            return ' '.join([word, "does not exist, try again"])
         else:        
             ind = self.vocabulary.index(word)
             word = self.word_vectors[ind]
@@ -281,13 +264,15 @@ def main():
         choice = input('> ')  
         input_args = choice.split()
         
+        #fix error output
         if input_args[0] == 'sim':
            sim = x.find_similarity(input_args[1].lower(), input_args[2].lower())
-           print('cosine similarity between', input_args[1], 'and',input_args[2] ,'is\n', sim, '\n')
+           print('Cosine similarity between', input_args[1], 'and',input_args[2] ,'is\n', sim, '\n')
            
+        #fix error output
         elif input_args[0] == 'top':
            top = x.similarity_top(input_args[1].lower())
-           print('top similar words for', input_args[1], 'is:')
+           print('Top similar words for', input_args[1], 'is:')
            for x, y in top:
                print(x, y)
                
@@ -296,7 +281,8 @@ def main():
        
         elif input_args[0] == 'save':
             x.save()
-            
+        
+        #fix error in path
         elif input_args[0] == 'update':
             x.update(input_args[1])
             
@@ -308,6 +294,7 @@ def main():
             print("'top word' for top 3 similar words")        
             print("'save' to save current data")
             print("'update path' to update the data with a new textfile")
+            print("'info' for info about the data")
             print("'exit' to quit")
         
         else:
