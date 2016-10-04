@@ -27,8 +27,6 @@ import random
 import math
 import sklearn.metrics.pairwise as d
 import matplotlib.pyplot as plt
-from scipy import linalg as sla
-import sklearn.decomposition as dec
 
 class distrib_semantics():
     
@@ -220,8 +218,21 @@ class distrib_semantics():
                 word_top[2] = self.vocabulary[i]
                 
         return [(x, y[0][0]) for x, y in zip(word_top,top)]
+    
+    def graph(self):
         
+        points = []        
         
+        for val in self.weights:
+            points.append(val[1])
+        
+        plt.scatter(points, points)
+        plt.show()
+            
+        
+    #######################################################
+    ################## DATA OPTIONS #######################
+    #######################################################
     def save(self):
         outfile1 = '/home/usr1/git/dist_data/np_1.npy'
         outfile2 = '/home/usr1/git/dist_data/np_2.npy'
@@ -300,27 +311,29 @@ def main():
         choice = input('> ')  
         input_args = choice.split()
         
-        if input_args == '':
+        if len(input_args) == 0:
             print('Please try again')
         #fix error output
         elif input_args[0] == 'sim':
             try:
-                sim = x.find_similarity(input_args[1].lower(), input_args[2].lower())
-                if sim == str(sim):
-                    print(sim)
+                sim_res = x.find_similarity(input_args[1].lower(), input_args[2].lower())
+                if sim_res == str(sim_res):
+                    print(sim_res)
                 else:
-                    print('Cosine similarity between', input_args[1], 'and',input_args[2] ,'is\n', sim, '\n')
+                    print('Cosine similarity between', input_args[1], 'and',input_args[2] ,'is\n', sim_res, '\n')
             except:
-                print('Invalid input')
+                print("Invalid input for 'sim'")
+        
+        #DO NOT USE, CONTAINS ERRORS        
         #fix error output
         elif input_args[0] == 'top':
             try:
-                top = x.similarity_top(input_args[1].lower())
+                top_res = x.similarity_top(input_args[1].lower())
                 print('Top similar words for', input_args[1], 'is:')
-                for x, y in top:
-                    print(x, y)
+                for i, (x, y) in enumerate(top_res):
+                    print(i+1, x, y)
             except:
-                print('Invalid input')
+                print("Invalid input for top'")
                
         elif input_args[0] == 'exit':
            break
@@ -339,9 +352,12 @@ def main():
                 x.info(input_args[1].lower())
             except:
                 x.info(None)
+                
+        elif input_args[0] == 'graph':
+            x.graph()
             
         elif input_args[0] == 'help':
-            print("'sim word1 word2' for similarity")
+            print("sim word1 word2' for similarity")
             print("'top word' for top 3 similar words")        
             print("'save' to save current data")
             print("'update path' to update the data with a new textfile")
