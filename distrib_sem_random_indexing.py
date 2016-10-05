@@ -15,6 +15,11 @@ Random indexing:
     (2): 
         scan text
             each time a word w occurs in a context, add that contexts index vector to the vector of that word
+            
+            
+            
+    ######
+        UPDATING DATA
        
 """
 import numpy as np
@@ -36,6 +41,8 @@ class distrib_semantics():
         self.weights = []
         self.total_words = 0
         self.sentences_total = 0
+        
+        self.gen_sentences = 0
     
     #create an index vector for each word
     def rand_index_vector(self):
@@ -88,10 +95,10 @@ class distrib_semantics():
             else:
                 self.weights[self.vocabulary.index(word)][1] += 1
                 
-                if self.documents in self.weights[self.vocabulary.index(word)][3:]:
+                if int(self.documents) in self.weights[self.vocabulary.index(word)][3:]:
                     pass
                 else:
-                    self.weights[self.vocabulary.index(word)].append(self.documents)
+                    self.weights[self.vocabulary.index(word)].append(int(self.documents))
                 
                 if word not in added:
                     self.weights[self.vocabulary.index(word)][2] += 1
@@ -125,28 +132,34 @@ class distrib_semantics():
             
             except FileNotFoundError:
                 print("File not found, try again")
-                
-        
+        self.gen_sentences = (x for x in self.superlist)       
+    
+    #create weights and add index vectors to word vectors
+    def apply(self):
         self.apply_weights()
         self.create_word_vectors()
                                 
+    #weights always updated after create_vectors, incorporate        
+                                
+    #Assign weight values
     def apply_weights(self):  
         print("Applying weights...")
         ###### Differrent weights if word is behind/after???
         ##Create weights for indexes
         for i, w in enumerate(self.weights):
-            #tf-idf weight
+#            self.word_vectors[i] = np.zeros(1024) #updating
             #real idf
-            idf1 = math.log(self.documents/len(self.weights[i][3:]))
-            idf = math.log(self.sentences_total/w[2])
+            idf = math.log1p(self.documents/len(self.weights[i][3:])) #smooth
+            isf = math.log(self.sentences_total/w[2]) #inverse sentence frequency
             self.weights[i][0] = (w[1]/self.total_words)*idf
             
+    #add index vectors in the words context to the word_vector
     def create_word_vectors(self):
         print("Creating word vectors...")
         window = 1 #how many words before/after to consider being a part of the context
         #weight for sliding window > 1
         #create contexts
-        for sentence in self.superlist:
+        for sentence in self.gen_sentences:
             for i, word in enumerate(sentence):
                 ###SLIDING WINDOW PARAMETER                                
                 for n in range(1,window+1):
@@ -165,7 +178,7 @@ class distrib_semantics():
                     except:
                         pass
         #empty sentence list incase update command
-        self.superlist = []
+#        self.superlist = []
            
     
     #######################################################
@@ -257,8 +270,14 @@ class distrib_semantics():
         self.sentences_total = np.load('/home/usr1/git/dist_data/np_6.npy')
         self.documents = np.load('/home/usr1/git/dist_data/np_7.npy')
     
-    def update(self, path):
-        self.create_vectors([path])
+    def update(self, paths):
+        #read new files
+        for path in paths:
+            path.rstrip(',')
+            self.create_vectors([path])
+        
+        #apply the changes
+        self.apply()
         
     def info(self, arg):
 
@@ -271,7 +290,7 @@ class distrib_semantics():
                 print('in', self.weights[self.vocabulary.index(arg)][2], 'sentences')
                 print('total weight of word:', self.weights[self.vocabulary.index(arg)][0])
                 print('word in documents:', self.weights[self.vocabulary.index(arg)][3:])
-                print('idf', math.log(self.documents/len(self.weights[self.vocabulary.index(arg)][3:])), '\n')
+                print('idf', math.log1p(self.documents/len(self.weights[self.vocabulary.index(arg)][3:])), '\n')
 
         else:
             print(len(self.vocabulary), 'unique words in vocabulary')
@@ -287,18 +306,32 @@ def main():
     #,'/home/usr1/PythonPrg/project/gutenberg/austen-emma.txt','/home/usr1/PythonPrg/project/gutenberg/austen-sense.txt'
     
     print("Welcome to Distributial Semantics with Random Indexing")
-    
+    new_data = False
     #load data
     while True:
-        print("Enter new data source by typing 'new path', load by typing 'load'")
+        if new_data == True:
+            print("Enter paths by typing 'new <path>' finish by typing 'apply'")
+        else:
+            print("Enter new data source by typing 'new path', load by typing 'load'")
+            
         setup = input('> ')
         setup = setup.split()
+        
         if setup[0] == 'load':
-            x.load()
-            break
+            if new_data == False:
+                x.load()
+                break
+        
         elif setup[0] == 'new':
-            x.create_vectors(['/home/usr1/Python_Prg_1/SU_PY/project/test_doc_1.txt'])
-            break
+            new_data = True
+            print('Enter paths to data:')
+            x.create_vectors(['/home/usr1/PythonPrg/project/test_doc_1.txt','/home/usr1/PythonPrg/project/test_doc_2.txt', '/home/usr1/PythonPrg/project/test_doc_3.txt', '/home/usr1/PythonPrg/project/test_doc_4.txt'])
+        
+        elif setup[0] == 'apply':
+            if new_data == True:
+                x.apply()
+                break
+
         else:
             print('Invalid input')
         
@@ -343,9 +376,9 @@ def main():
         
         elif input_args[0] == 'update':
             try:
-                x.update(input_args[1])
+                x.update(input_args[1:])
             except:
-                print('Please provide a path')
+                print('Please provide a paths')
             
         elif input_args[0] == 'info':
             try:
