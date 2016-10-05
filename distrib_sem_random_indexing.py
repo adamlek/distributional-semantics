@@ -15,7 +15,13 @@ Random indexing:
     (2): 
         scan text
             each time a word w occurs in a context, add that contexts index vector to the vector of that word
-            
+
+OPEN PROBLEMS
+    after "top word" __distrib_semantics__ changes top numpy.ndarray
+
+INVESTIGATE
+    update function:
+        self.evaled_data        
        
 """
 import numpy as np
@@ -24,6 +30,7 @@ import random
 import math
 import sklearn.metrics.pairwise as d
 import matplotlib.pyplot as plt
+import os.path
 
 class distrib_semantics():
     
@@ -38,8 +45,9 @@ class distrib_semantics():
         self.total_words = 0
         self.sentences_total = 0
         
-        self.gen_sentences = 0
-        self.evaled_data = []
+        self.evaled_data = [] #check values, etc, IMPORTANT
+        #CURRENT INSTANCE
+        self.current_load = None
     
     #create an index vector for each word
     def rand_index_vector(self):
@@ -102,8 +110,7 @@ class distrib_semantics():
                     added.append(word)   
                 
     def create_vectors(self, filenames):
-        err = []
-        for t, filename in enumerate(filenames):
+        for filename in filenames:
             try:
                 with open(filename) as training:
                     print("Reading file", filename, "...")
@@ -126,38 +133,27 @@ class distrib_semantics():
                                 while '' in formatted_sentence:
                                     formatted_sentence.remove('')
                                 
-                                self.superlist.append(formatted_sentence)
+                                self.superlist.append([self.vocabulary.index(x) for x in formatted_sentence])
+                                
                     print("Success!\n")
                     
             except FileNotFoundError as fnfe:
                 print('FILE ERROR!\n {0}\n'.format(fnfe))
-                err.append(filename)
-                continue
-        
-        #generator for sentences
-         
-        
-        #return values
-        if err:
-            return err
-        else:
-            return None
-        
+                continue    
+
     #create weights and add index vectors to word vectors
     def apply(self, update=False):
-        self.apply_weights()
+        self.apply_weights(update)
         self.create_word_vectors(update)
-                                
-    ######## weights always updated after create_vectors, incorporate       
-    # n-gram history? could be saved 
-                                
+
     #Assign weight values
-    def apply_weights(self):  
+    def apply_weights(self, update):  
         print("Applying weights...\n")
         ###### Differrent weights if word is behind/after???
         ##Create weights for indexes
         for i, w in enumerate(self.weights):
-            self.word_vectors[i] = np.zeros(1024) #updating
+            if update == True:
+                self.word_vectors[i] = np.zeros(1024) #reset old word_vectors
             #real idf
             idf = math.log1p(self.documents/len(self.weights[i][3:])) #smooth
 #            isf = math.log(self.sentences_total/w[2]) #inverse sentence frequency
@@ -169,16 +165,17 @@ class distrib_semantics():
         print("Creating word vectors...\n")
         self.window = 1 #how many words before/after to consider being a part of the context
         #weight for sliding window > 1
-        self.gen_sentences = (x for x in self.superlist)
+        gen_sentences = (x for x in self.superlist)
+        self.superlist = []
         
-        for sentence in self.gen_sentences:
+        for sentence in gen_sentences:
                 self.ngram_contexts(sentence)
         
         #create contexts
         if update == True:
-            self.upgrade_contexts()
+            self.update_contexts()
         
-        self.superlist = []
+#        self.evaled_data = []
         
     def ngram_contexts(self, sentence):
         for i, word in enumerate(sentence):
@@ -187,31 +184,39 @@ class distrib_semantics():
                 #words before                                
                 try:
                     if i - n >= 0: #exclude negative indexes
-                        prev_word = self.vocabulary.index(sentence[i-n]) 
-                        self.word_vectors[self.vocabulary.index(word)] += (self.i_vectors[prev_word] * self.weights[prev_word][0])
-                        self.evaled_data.append((self.vocabulary.index(word), prev_word))
+                        prev_word = sentence[i-n]
+                        self.word_vectors[word] += (self.i_vectors[prev_word] * self.weights[prev_word][0])
+                        self.evaled_data.append((word, prev_word))
                 except:
                     pass
-                
                 #words after
                 try:
-                    next_word = self.vocabulary.index(sentence[i+n])
-                    self.word_vectors[self.vocabulary.index(word)] += (self.i_vectors[next_word] * self.weights[next_word][0])
-                    self.evaled_data.append((self.vocabulary.index(word), next_word))
+                    next_word = sentence[i+n]
+                    self.word_vectors[word] += (self.i_vectors[next_word] * self.weights[next_word][0])
+                    self.evaled_data.append((word, next_word))
                 except:
                     pass
-                
-    def upgrade_contexts(self):
-        print("Re-applying updated vectors...\n")
-        data = np.load('/home/usr1/git/dist_data/np_hist.npy')
+
+    ##########################commands
+    #commands NEW => APPLY => UPDATE => SAVE ERRORS?
+    #commands NEW => APPLY => SAVE => UPDATE OK!
+    def update_contexts(self):
+        try:
+            print("Re-applying updated vectors...\n")
+            data = list(np.load('/home/usr1/git/dist_data/d_data/{0}.npy').format(self.current_load))
+            
+            for x, y in data:
+                self.word_vectors[x] += (self.i_vectors[y] * self.weights[y][0])
+            
+            data += self.evaled_data
+            np.save('/home/usr1/git/dist_data/d_data/{0}.npy'.format(self.current_load), data)
+            #no need for data currently, only needed when updating
+            del data
+            self.evaled_data = [] #values already used up!
         
-        for x, y in data:
-            self.word_vectors[x] += (self.i_vectors[y] * self.weights[y][0])
+        except FileNotFoundError:
+            pass
         
-        #drop data
-        data = []
-    
-    
     #######################################################
     ################## EVUALUATIONS #######################
     #######################################################
@@ -219,9 +224,9 @@ class distrib_semantics():
         
         #check if the words exists
         if word1 not in self.vocabulary:
-            return ' '.join([word1, "does not exist, try again"])
+            return "{0} does not exist, try again\n".format(word1)
         elif word2 not in self.vocabulary:
-            return ' '.join([word2, "does not exist, try again"])
+            return "{0} does not exist, try again\n".format(word2)
         else:
             i_word1 = self.word_vectors[self.vocabulary.index(word1)]
             i_word2 = self.word_vectors[self.vocabulary.index(word2)]
@@ -235,13 +240,12 @@ class distrib_semantics():
     def similarity_top(self, word):
         
         if word not in self.vocabulary:
-            return ' '.join([word, "does not exist, try again"])
+            return "{0} does not exist, try again\n".format(word)
         else:        
             ind = self.vocabulary.index(word)
             word = self.word_vectors[ind]
         
-        top = [0,0,0] 
-        word_top = ["","",""]
+        top = [[0,""],[0,""],[0,""]]
         
         for i, vect in enumerate(self.word_vectors):
             if i == ind:
@@ -249,18 +253,16 @@ class distrib_semantics():
             
             cs = d.cosine_similarity(word.reshape(1,-1), vect.reshape(1,-1))
             
-            if cs > top[0]:
-                top[0] = cs
-                word_top[0] = self.vocabulary[i]
-            elif cs > top[1]:
-                top[1] = cs
-                word_top[1] = self.vocabulary[i]
-            elif cs > top[2]:
-                top[2] = cs
-                word_top[2] = self.vocabulary[i]
+            if cs > top[0][0]:
+                top[0][0:] = cs, self.vocabulary[i]
+            elif cs > top[1][0]:
+                top[1][0:] = cs, self.vocabulary[i]
+            elif cs > top[2][0]:
+                top[2][0:] = cs, self.vocabulary[i]
                 
-        return [(x, y[0][0]) for x, y in zip(word_top,top)]
+        return(top)
     
+    #some form of graph
     def graph(self):
         
         points = []        
@@ -275,8 +277,8 @@ class distrib_semantics():
     ################## DATA OPTIONS #######################
     #######################################################
     #save data
-    def save(self):
-        ofile = '/home/usr1/git/dist_data/np_data.npz'
+    def save(self, filename):
+        ofile = '/home/usr1/git/dist_data/d_data/{0}.npz'.format(filename)
         np.savez(ofile, 
                  v = self.vocabulary, 
                  wv = self.word_vectors, 
@@ -285,13 +287,21 @@ class distrib_semantics():
                  tw = self.total_words, 
                  st = self.sentences_total, 
                  d = self.documents)    
-                 
-        histfile = '/home/usr1/git/dist_data/np_hist.npy'
-        np.save(histfile, self.evaled_data)
+        
+        histfile = '/home/usr1/git/dist_data/d_data/{0}_hist.npy'.format(filename)
+        self.current_load = filename
+        
+        if os.path.isfile(histfile) == True:
+            pass
+        else:
+            np.save(histfile, self.evaled_data)
+            self.evaled_data = []
                  
     #load saved data
-    def load(self):
-        data = np.load('/home/usr1/git/dist_data/np_data.npz') 
+    def load(self, filename):
+        data = np.load('/home/usr1/git/dist_data/d_data/{0}.npz'.format(filename))
+        
+        self.current_load = filename
         
         self.vocabulary = list(data['v'])
         self.i_vectors = list(data['iv'])
@@ -302,23 +312,22 @@ class distrib_semantics():
         self.documents = int(data['d'])
     
     #update the data
+    ######### NEEDS ATTENTION
     def update(self, paths):
-        #read new files
-        for path in paths:
-            path.rstrip(',')
-            z = self.create_vectors([path])
+        try:
+            for path in paths:
+                path.rstrip(',')
+                self.create_vectors([path])
             
-            ### HANDLE ERRORS
-        if z != None:
-            print("Error reading", z)            
-        else:
-            #apply the new data
+            #apply the new data with update=True
             self.apply(True)
             print("New data successfully applied")
-        
+            
+        except Exception as e:
+            print(e)            
+
     #info about the data or individual words
     def info(self, arg):
-
         if arg != None:
             if arg not in self.vocabulary:
                 print(arg, 'does not exist')
@@ -335,8 +344,6 @@ class distrib_semantics():
             print(self.total_words, 'total words')
             print(self.documents, 'total documents\n')
             
-
-
 #######################################################
 ##################### INTERFACE #######################
 #######################################################
@@ -358,23 +365,30 @@ def main():
         
         if setup[0] == 'load':
             if new_data == False:
-                x.load()
-                break
+                try:
+                    x.load(setup[1])
+                    break
+                except Exception as e:
+                    print(e)
+                    print("Try again")
         
         elif setup[0] == 'new':
             new_data = True
-            x.create_vectors(['/home/usr1/PythonPrg/project/test_doc_1.txt','/home/usr1/PythonPrg/pr111oject/test_doc_2.txt', '/home/usr1/PythonPrg/project/test_doc_3.txt', '/home/usr1/PythonPrg/project/test_doc_4.txt'])
+#            x.create_vectors(['/home/usr1/git/dist_data/test_doc_3.txt'])
+            x.create_vectors(['/home/usr1/git/dist_data/austen-emma.txt'])
                 
         elif setup[0] == 'apply':
             if new_data == True:
                 x.apply()
                 break
+        elif setup[0] == 'exit':
+            break
 
         else:
             print('Invalid input')
         
     #User interface after data has loaded
-    print("Type 'sim <word1> <word2>' for similarity between two words, 'top <word>' for top 3 similar words, 'help' to display availible commands and 'exit' to quit")
+    print("\nType 'sim <word1> <word2>' for similarity between two words, 'top <word>' for top 3 similar words, 'help' to display availible commands and 'exit' to quit")
     while True:
         choice = input('> ')  
         input_args = choice.split()
@@ -382,42 +396,50 @@ def main():
         if len(input_args) == 0:
             print('Please try again')
             
-        #fix error output
         elif input_args[0] == 'sim':
             try:
                 sim_res = x.find_similarity(input_args[1].lower(), input_args[2].lower())
                 if sim_res == str(sim_res):
                     print(sim_res)
                 else:
-                    print('Cosine similarity between', input_args[1], 'and',input_args[2] ,'is\n', sim_res)
-            except:
+                    print('Cosine similarity between', input_args[1], 'and',input_args[2] ,'is\n', sim_res, '\n')
+            
+            except Exception as e:
+                print(e)
                 print("Invalid input for 'sim'")
         
-        #DO NOT USE, CONTAINS ERRORS        
-        #fix error output
         elif input_args[0] == 'top':
             try:
+                print(type(x))
                 top_res = x.similarity_top(input_args[1].lower())
+                print(type(x))
                 if top_res == str(top_res):
                     print(top_res)
                 else:
                     print('Top similar words for', input_args[1], 'is:')
                     for i, (x, y) in enumerate(top_res):
                         print(i+1, x, y)
-            except:
+                        
+            except Exception as e:
+                print(e)
                 print("Invalid input for 'top'")
-               
+        
         elif input_args[0] == 'exit':
            break
        
         elif input_args[0] == 'save':
-            x.save()
+            try:
+                x.save(input_args[1])
+                print("Successfully saved as", input_args[1])
+            except Exception as e:
+                print("Error", e)
         
         elif input_args[0] == 'update':
             try:
                 x.update(input_args[1:])
-            except:
-                print('Please provide a path/paths')
+            except Exception as e:
+                print(e)
+                print('Update failed')
             
         elif input_args[0] == 'info':
             try:
