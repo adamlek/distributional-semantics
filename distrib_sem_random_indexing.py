@@ -16,10 +16,6 @@ Random indexing:
         scan text
             each time a word w occurs in a context, add that contexts index vector to the vector of that word
             
-            
-            
-    ######
-        UPDATING DATA
        
 """
 import numpy as np
@@ -139,7 +135,7 @@ class distrib_semantics():
                 continue
         
         #generator for sentences
-        self.gen_sentences = (x for x in self.superlist) 
+         
         
         #return values
         if err:
@@ -148,9 +144,9 @@ class distrib_semantics():
             return None
         
     #create weights and add index vectors to word vectors
-    def apply(self):
+    def apply(self, update=False):
         self.apply_weights()
-        self.create_word_vectors()
+        self.create_word_vectors(update)
                                 
     ######## weights always updated after create_vectors, incorporate       
     # n-gram history? could be saved 
@@ -161,39 +157,60 @@ class distrib_semantics():
         ###### Differrent weights if word is behind/after???
         ##Create weights for indexes
         for i, w in enumerate(self.weights):
-#            self.word_vectors[i] = np.zeros(1024) #updating
+            self.word_vectors[i] = np.zeros(1024) #updating
             #real idf
             idf = math.log1p(self.documents/len(self.weights[i][3:])) #smooth
-            isf = math.log(self.sentences_total/w[2]) #inverse sentence frequency
+#            isf = math.log(self.sentences_total/w[2]) #inverse sentence frequency
             self.weights[i][0] = (w[1]/self.total_words)*idf
             
+    #default update = False
     #add index vectors in the words context to the word_vector
-    def create_word_vectors(self):
+    def create_word_vectors(self, update):
         print("Creating word vectors...\n")
-        window = 1 #how many words before/after to consider being a part of the context
+        self.window = 1 #how many words before/after to consider being a part of the context
         #weight for sliding window > 1
-        #create contexts
+        self.gen_sentences = (x for x in self.superlist)
+        
         for sentence in self.gen_sentences:
-            for i, word in enumerate(sentence):
-                ###SLIDING WINDOW PARAMETER                                
-                for n in range(1,window+1):
-                    #words before                                
-                    try:
-                        if i - n >= 0: #exclude negative indexes
-                            prev_word = self.vocabulary.index(sentence[i-n]) 
-                            self.word_vectors[self.vocabulary.index(word)] += (self.i_vectors[prev_word] * self.weights[prev_word][0])
-                    except:
-                        pass
-                    
-                    #words after
-                    try:
-                        next_word = self.vocabulary.index(sentence[i+n])
-                        self.word_vectors[self.vocabulary.index(word)] += (self.i_vectors[next_word] * self.weights[next_word][0])
-                    except:
-                        pass
-        #empty sentence list incase update command
-#        self.superlist = []
-           
+                self.ngram_contexts(sentence)
+        
+        #create contexts
+        if update == True:
+            self.upgrade_contexts()
+        
+        self.superlist = []
+        
+    def ngram_contexts(self, sentence):
+        for i, word in enumerate(sentence):
+            ###SLIDING WINDOW PARAMETER                                
+            for n in range(1,self.window+1):
+                #words before                                
+                try:
+                    if i - n >= 0: #exclude negative indexes
+                        prev_word = self.vocabulary.index(sentence[i-n]) 
+                        self.word_vectors[self.vocabulary.index(word)] += (self.i_vectors[prev_word] * self.weights[prev_word][0])
+                        self.evaled_data.append((self.vocabulary.index(word), prev_word))
+                except:
+                    pass
+                
+                #words after
+                try:
+                    next_word = self.vocabulary.index(sentence[i+n])
+                    self.word_vectors[self.vocabulary.index(word)] += (self.i_vectors[next_word] * self.weights[next_word][0])
+                    self.evaled_data.append((self.vocabulary.index(word), next_word))
+                except:
+                    pass
+                
+    def upgrade_contexts(self):
+        print("Re-applying updated vectors...\n")
+        data = np.load('/home/usr1/git/dist_data/np_hist.npy')
+        
+        for x, y in data:
+            self.word_vectors[x] += (self.i_vectors[y] * self.weights[y][0])
+        
+        #drop data
+        data = []
+    
     
     #######################################################
     ################## EVUALUATIONS #######################
@@ -269,6 +286,9 @@ class distrib_semantics():
                  st = self.sentences_total, 
                  d = self.documents)    
                  
+        histfile = '/home/usr1/git/dist_data/np_hist.npy'
+        np.save(histfile, self.evaled_data)
+                 
     #load saved data
     def load(self):
         data = np.load('/home/usr1/git/dist_data/np_data.npz') 
@@ -293,7 +313,7 @@ class distrib_semantics():
             print("Error reading", z)            
         else:
             #apply the new data
-            self.apply()
+            self.apply(True)
             print("New data successfully applied")
         
     #info about the data or individual words
@@ -410,15 +430,15 @@ def main():
             
         elif input_args[0] == 'help':
             print("- Semantic operations")
-            print("'sim <word1> <word2>' for similarity")
-            print("'top <word>' for top 3 similar words")     
+            print("\t'sim <word1> <word2>' for similarity")
+            print("\t'top <word>' for top 3 similar words")     
             print("- Data operations")
-            print("'save' to save current data")
-            print("'update <path>' to update the data with a new textfile")
-            print("'info' for info about the data")
-            print("'info <word> for info about the word'")
+            print("\t'save' to save current data")
+            print("\t'update <path>' to update the data with a new textfile")
+            print("\t'info' for info about the data")
+            print("\t'info <word> for info about the word'")
             print("- ETC")
-            print("'exit' to quit")
+            print("\t'exit' to quit")
         
         else:
            print("Unrecognized command")
