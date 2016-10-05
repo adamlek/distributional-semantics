@@ -101,6 +101,7 @@ class distrib_semantics():
         for filename in filenames:
             try:
                 with open(filename) as training:
+                    print("Reading file...")
                     self.documents += 1
                     for row in training:
                          #separate row into sentences
@@ -129,7 +130,8 @@ class distrib_semantics():
         self.apply_weights()
         self.create_word_vectors()
                                 
-    def apply_weights(self):        
+    def apply_weights(self):  
+        print("Applying weights...")
         ###### Differrent weights if word is behind/after???
         ##Create weights for indexes
         for i, w in enumerate(self.weights):
@@ -140,6 +142,7 @@ class distrib_semantics():
             self.weights[i][0] = (w[1]/self.total_words)*idf
             
     def create_word_vectors(self):
+        print("Creating word vectors...")
         window = 1 #how many words before/after to consider being a part of the context
         #weight for sliding window > 1
         #create contexts
