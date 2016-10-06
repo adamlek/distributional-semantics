@@ -22,6 +22,7 @@ INVESTIGATE
         
 TO ADD:
     * lemma/stemming
+    * shared information [from history]
        
 """
 import numpy as np
@@ -37,7 +38,7 @@ class distrib_semantics():
     def __init__(self):
         self.vocabulary = []
         self.index_vectors = []
-        self.word_vectors = []   
+        self.word_vectors = []
         self.superlist = []
         
         self.documents = 0
@@ -51,7 +52,7 @@ class distrib_semantics():
     
     #< create an index vector for each word
     def rand_index_vector(self):
-        arr = np.zeros(1024)        
+        arr = np.zeros(1024)
 
         #< distribute (+1)'s and (-1)'s at random indices
         for i in range(0, 4):
@@ -76,14 +77,14 @@ class distrib_semantics():
             if word == '':
                 continue 
                 
-            self.total_words += 1   
+            self.total_words += 1
             
             #< FINE TUNE DATA 
             #< change numbers to NUM
             if word.lstrip('-').isdigit():
                 word = 'NUM'
                 formatted_sentence[i] = 'NUM'
-            ###< NUMS -> '5-6' etc
+            #< NUMS -> '5-6' etc
             elif re.match('\d+-\d+', word) is not None:
                 word = 'NUMS'
                 formatted_sentence[i] = 'NUMS'
@@ -97,7 +98,7 @@ class distrib_semantics():
                 self.vocabulary.append(word)
                 self.index_vectors.append(self.rand_index_vector())
                 self.word_vectors.append(np.zeros(1024))
-                self.weights.append([0, 1, 1, self.documents])        
+                self.weights.append([0, 1, 1, self.documents])
             #< create weight tools
             else:
                 self.weights[self.vocabulary.index(word)][1] += 1
@@ -106,10 +107,10 @@ class distrib_semantics():
                     pass
                 else:
                     self.weights[self.vocabulary.index(word)].append(int(self.documents))
-                
+                #< unique words in sentence
                 if word not in added:
                     self.weights[self.vocabulary.index(word)][2] += 1
-                    added.append(word)   
+                    added.append(word)
                 
     def create_vectors(self, filenames):
         for filename in filenames:
@@ -125,7 +126,7 @@ class distrib_semantics():
                             #< format sentence
                             #< remove special things before/after word
                             formatted_sentence = [w.strip().lower() for w in sentence]
-                            #< only add sentences longer than 0 words    
+                            #< only add sentences longer than 0 words
                             if formatted_sentence:
                                 self.vectorizer(formatted_sentence)
                                 
@@ -150,7 +151,7 @@ class distrib_semantics():
         self.create_word_vectors(update)
 
     #< Assign weight values
-    def apply_weights(self, update):  
+    def apply_weights(self, update):
         print('Applying weights...\n')
         # !!! Differrent weights if word is behind/after?
         #< Create weights for indexes
@@ -179,9 +180,9 @@ class distrib_semantics():
                 
     #< Read context of word and add vectors    
     def ngram_contexts(self, sentence):
-        for i, word in enumerate(sentence):                              
+        for i, word in enumerate(sentence):
             for n in range(1,self.window+1):
-                #< words before                                
+                #< words before
                 try:
                     if i - n >= 0: #< exclude negative indexes
                         prev_word = sentence[i-n]
@@ -198,7 +199,7 @@ class distrib_semantics():
                 except: #< no word after
                     pass
     
-    #< Updating the data
+    #< Updating of data
     def update_contexts(self):
         try:
             print('Re-applying updated vectors...\n')
@@ -216,10 +217,10 @@ class distrib_semantics():
             
             #< discard data after save
             del data
-            self.evaled_data = [] #< values used up!
+            self.evaled_data = []#< values used up!
         
-        except FileNotFoundError as fnfe: 
-            print(fnfe)            
+        except FileNotFoundError as fnfe:
+            print(fnfe)
             pass #< when update is done with no save
         
     #######################################################
@@ -241,22 +242,21 @@ class distrib_semantics():
         
         return(cosine_sim[0][0])        
 
-    #< !!! ERRORS
     #< top 3
     def similarity_top(self, word):
         if word not in self.vocabulary:
             return '{0} does not exist, try again\n'.format(word)
-        else:        
+        else:
             ind = self.vocabulary.index(word)
             word = self.word_vectors[ind]
         
         top = [[0,""],[0,""],[0,""]]
         
+        #< cosine sim between input word and ALL words
         for i, vect in enumerate(self.word_vectors):
             if i == ind:
                 continue
             
-            #< cosine sim between input word and ALL words
             cs = d.cosine_similarity(word.reshape(1,-1), vect.reshape(1,-1))
             
             #< Set highest values
@@ -272,8 +272,8 @@ class distrib_semantics():
     #< some form of graph
     def graph(self):
         
-        points_wf = [x[1] for x in self.weights]        
-        points_sf = [math.log(x[2]) for x in self.weights]        
+        points_wf = [x[1] for x in self.weights]
+        points_sf = [math.log(x[2]) for x in self.weights]
         
         plt.scatter(points_wf, points_sf)
         plt.show()
@@ -292,7 +292,7 @@ class distrib_semantics():
                  weigh = self.weights, 
                  t_wor = self.total_words, 
                  sen_t = self.sentences_total, 
-                 docum = self.documents)    
+                 docum = self.documents)
         
         histfile = '/home/usr1/git/dist_data/d_data/{0}_hist.npy'.format(filename)
         self.current_load = filename
@@ -315,7 +315,7 @@ class distrib_semantics():
         
         self.vocabulary = list(data['vocab'])
         self.index_vectors = list(data['i_vec'])
-        self.word_vectors = list(data['w_vec'])   
+        self.word_vectors = list(data['w_vec'])
         self.weights = list(data['weigh'])
         
         self.total_words = int(data['t_wor'])
@@ -326,7 +326,6 @@ class distrib_semantics():
         del data
     
     #< update the data
-    ######### NEEDS ATTENTION
     def update(self, paths):
         try:
             for path in paths:
@@ -338,7 +337,7 @@ class distrib_semantics():
             print('New data successfully applied')
             
         except Exception as e:
-            print(e)            
+            print(e)
 
     #< info about the data or individual words
     def info(self, arg):
@@ -483,7 +482,7 @@ def main():
         elif input_args[0] == 'help':
             print('- Semantic operations')
             print('\t"sim <word1> <word2>" for similarity')
-            print('\t"top <word>" for top 3 similar words')     
+            print('\t"top <word>" for top 3 similar words')
             print('- Data operations')
             print('\t"save <name>" to save current data')
             print('\t"update <path>" to update the data with a new textfile')
