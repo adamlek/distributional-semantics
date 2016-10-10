@@ -13,4 +13,4 @@ Commands:
 * "info word" information about a word
 * "save name" save current data as "name"
 * "load name" to load saved data 
-* "update path" update the current data with a new data
+* "update path" update the current data with new data(.txt file)
