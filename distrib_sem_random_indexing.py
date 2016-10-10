@@ -23,9 +23,9 @@ import numpy as np
 import re
 import random
 import math
-import sklearn.metrics.pairwise as d
+import sklearn.metrics.pairwise as pw
 import matplotlib.pyplot as plt
-from stemming.porter2 import stem
+from stemming.porter2 import stem #ENGLISH
 import os.path
 import sys
 
@@ -39,7 +39,7 @@ class DistributionalSemantics():
         self.weights = []
         self.word_count = []
         self.documents = 0
-        self.total_words = 0
+        self.total_words = []
 
         self.superlist = []
         self.evaled_data = [] # !!! check values
@@ -78,7 +78,7 @@ class DistributionalSemantics():
             if word == '':
                 continue
 
-            self.total_words += 1
+            self.total_words[self.documents-1] += 1
 
             #< FINE TUNE DATA
             #< change numbers to NUM
@@ -120,6 +120,7 @@ class DistributionalSemantics():
                 with open(filename) as training:
                     print('Reading file {0}...'.format(filename))
                     self.documents += 1
+                    self.total_words.append(0)
                     for row in training:
                          #< separate row into sentences
                          row = row.strip().split('. ')
@@ -164,7 +165,7 @@ class DistributionalSemantics():
             #< inverse document frequency + smoothing
             #< log normalization term frequency
             idf = math.log1p(self.documents/len(self.weights[i][1:]))
-            tf = list(map(lambda e: 1+math.log(e) if e != 0 else (e), self.word_count[i]))
+            tf = [(e/self.total_words[n]) for n, e in enumerate(self.word_count[i]) if e != 0]
             self.weights[i][0] = sum(tf)*idf
 
     #< default update = False
@@ -187,21 +188,16 @@ class DistributionalSemantics():
         for i, word in enumerate(sentence):
             for n in range(1,self.window+1):
                 #< words before
-                try:
-                    if i - n >= 0: #< exclude negative indexes
-                        prev_word = sentence[i-n]
-                        self.word_vectors[word] += (self.index_vectors[prev_word] * self.weights[prev_word][0])
-                        self.evaled_data.append((word, prev_word))
-                except: #< no word before
-                    pass
+                if i - n >= 0: #< exclude negative indexes
+                    prev_word = sentence[i-n]
+                    self.word_vectors[word] += (self.index_vectors[prev_word] * self.weights[prev_word][0])
+                    self.evaled_data.append((word, prev_word))
 
                 #< words after
-                try:
+                if i + n != len(sentence):
                     next_word = sentence[i+n]
                     self.word_vectors[word] += (self.index_vectors[next_word] * self.weights[next_word][0])
                     self.evaled_data.append((word, next_word))
-                except: #< no word after
-                    pass
 
         #< ??? save evaled data here?
         #< ??? Change save name to new
@@ -249,7 +245,7 @@ class DistributionalSemantics():
             i_word1 = self.word_vectors[self.vocabulary.index(word1)]
             i_word2 = self.word_vectors[self.vocabulary.index(word2)]
 
-        cosine_sim = d.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
+        cosine_sim = pw.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
 
         return(cosine_sim[0][0])
 
@@ -271,7 +267,7 @@ class DistributionalSemantics():
             if i == ind:
                 continue
 
-            cs = d.cosine_similarity(word.reshape(1,-1), vect.reshape(1,-1))
+            cs = pw.cosine_similarity(word.reshape(1,-1), vect.reshape(1,-1))
 
             #< Set highest values
             if cs > top[0][0]:
@@ -314,7 +310,7 @@ class DistributionalSemantics():
         for x in w2:
             vector_w2[x] += 1
 
-        cosine_sim = d.cosine_similarity(vector_w1.reshape(1, -1), vector_w2.reshape(1, -1))
+        cosine_sim = pw.cosine_similarity(vector_w1.reshape(1, -1), vector_w2.reshape(1, -1))
 
         return cosine_sim[0][0]
 
@@ -364,18 +360,18 @@ class DistributionalSemantics():
     def load(self, filename):
         try:
             data = np.load('/home/usr1/git/dist_data/d_data/{0}.npz'.format(filename))
-
+    
             self.current_load = filename
-
+    
             self.vocabulary = list(data['vocab'])
             self.index_vectors = list(data['i_vec'])
             self.word_vectors = list(data['w_vec'])
             self.weights = list(data['weigh'])
             self.word_count = list(data['wor_c'])
-
-            self.total_words = int(data['t_wor'])
+    
+            self.total_words = list(data['t_wor'])
             self.documents = int(data['docum'])
-
+    
             #< clear data after data is extracted
             del data
 
@@ -415,15 +411,24 @@ class DistributionalSemantics():
             if arg not in self.vocabulary:
                 print(arg_w, 'does not exist')
             else:
-                print('occurences:', self.word_count[self.vocabulary.index(arg)])
-                print('word in documents:', self.weights[self.vocabulary.index(arg)][1:])
-                print('tf:',  sum(list(map(lambda e: 1+math.log(e) if e != 0 else (e), self.word_count[self.vocabulary.index(arg)]))))
-                print('idf:', math.log1p(self.documents/len(self.weights[self.vocabulary.index(arg)][1:])))
-                print('total weight of word:', self.weights[self.vocabulary.index(arg)][0],'\n')
+                print('Word {0} stemmed to {1}'.format(arg_w, arg))
+                print('\nFrequencies:')
+                for i, c in enumerate(self.word_count[self.vocabulary.index(arg)]):
+                    if c == 0:
+                        continue
+                    else:
+                        print('Document {0}: {1}'.format(i+1, c))
+                print('Total occurences: {0}\n'.format(sum(self.word_count[self.vocabulary.index(arg)])))
+                print('Importance:')
+                print('Term frequecy weight: {0}'.format(sum([(e/self.total_words[n]) for n, e in enumerate(self.word_count[self.vocabulary.index(arg)]) if e != 0])))
+                print('Inverse document frequency: {0}'.format(math.log1p(self.documents/len(self.weights[self.vocabulary.index(arg)][1:]))))
+                print('total weight of word: {0}\n'.format(self.weights[self.vocabulary.index(arg)][0]))
         else:
             print(len(self.vocabulary), 'unique words in vocabulary')
-            print(self.total_words, 'total words')
-            print(self.documents, 'total documents\n')
+            print(sum(self.total_words), 'total words') #sum
+            print(self.documents, 'total documents')
+            for i, c in enumerate(self.total_words):
+                print('Document {0}: {1} words'.format(i+1, c))
 
 
 #######################################################
@@ -457,15 +462,15 @@ def main():
                     break
 
                 except Exception as e:
-                    print('Try again\n')
+                    print('Try again\n', e)
 
         #< input a new data source
         elif setup[0] == 'new':
             new_data = True
-#            distrib.process_data(['/home/usr1/git/dist_data/test_doc_0.txt'])
-            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
+            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_3.txt'])
+#            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
-        #< apply precossed data
+        #< apply precessed data
         elif setup[0] == 'apply':
             if new_data:
                 distrib.apply_data()
