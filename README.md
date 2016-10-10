@@ -13,4 +13,4 @@ Commands:
 * "info <word>" information about a word
 * "save <name>" save current data
 * "load <name>" to load saved data
-* "update <path>" update current data with a new data
+* "update <path>" update the current data with a new data
