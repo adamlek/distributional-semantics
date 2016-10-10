@@ -48,6 +48,10 @@ class DistributionalSemantics():
 
         self.window = 1 #< how many words before/after to consider being a part of the context
 
+    #######################################################
+    ################## PROCESSING #########################
+    #######################################################
+
     #< create an index vector for each word
     def rand_index_vector(self):
         arr = np.zeros(1024)
@@ -163,7 +167,7 @@ class DistributionalSemantics():
             if update:
                 self.word_vectors[i] = np.zeros(1024) #reset old word_vectors
             #< inverse document frequency + smoothing
-            #< log normalization term frequency
+            #< term frequency
             idf = math.log1p(self.documents/len(self.weights[i][1:]))
             tf = [(e/self.total_words[n]) for n, e in enumerate(self.word_count[i]) if e != 0]
             self.weights[i][0] = sum(tf)*idf
@@ -360,18 +364,17 @@ class DistributionalSemantics():
     def load(self, filename):
         try:
             data = np.load('/home/usr1/git/dist_data/d_data/{0}.npz'.format(filename))
-    
+
             self.current_load = filename
-    
+
             self.vocabulary = list(data['vocab'])
             self.index_vectors = list(data['i_vec'])
             self.word_vectors = list(data['w_vec'])
             self.weights = list(data['weigh'])
             self.word_count = list(data['wor_c'])
-    
             self.total_words = list(data['t_wor'])
             self.documents = int(data['docum'])
-    
+
             #< clear data after data is extracted
             del data
 
@@ -389,7 +392,7 @@ class DistributionalSemantics():
             status = self.process_data(files)
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
 
-            if status[0] == status[1]:
+            if status[0] == status[1]: #< ??? less strict
                 try:
                 #< apply the new data with update=True
                     self.apply_data(True)
@@ -571,11 +574,11 @@ def main():
             print('\t"sim <word> <word>" similarity between two words')
             print('\t"top <word>" top 3 similar words')
             print('\t"lsasim <word> <word>" LSA similarity between two words')
-            print('- Data operations')
-            print('\t"save <name>" save current data')
-            print('\t"update <path>" update the data with a new textfile')
             print('\t"info" information about the data')
             print('\t"info <word>" information about a word')
+            print('- Data operations')
+            print('\t"save <name>" save current data as "name"')
+            print('\t"update <path>" update the current data with a new data(.txt)')
             print('- ETC')
             print('\t"exit" to quit')
 
