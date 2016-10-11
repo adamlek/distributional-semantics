@@ -266,7 +266,7 @@ class DistributionalSemantics():
         return(cosine_sim[0][0])
 
     #< top 3
-    def similarity_top(self, s_word):
+    def similarity_top(self ,s_word):
         #< stem input
         word = stem(s_word)
 
@@ -275,6 +275,10 @@ class DistributionalSemantics():
         else:
             ind = self.vocabulary.index(word)
             word = self.word_vectors[ind]
+
+        #< custom n for top
+#        num = 6
+#        top2 = [[0,""]]*num
 
         top = [[0, ""], [0, ""], [0, ""], [0, ""], [0, ""]]
 
@@ -363,9 +367,12 @@ class DistributionalSemantics():
         self.current_load = filename
 
         #< !!! Add some utility to the history
-        #< if the file exists, its updated, don't save
+        #< save history
         if os.path.isfile(histfile):
-            pass
+            data = list(np.load(histfile))
+            data += self.evaled_data
+            np.save(histfile, data)
+            self.evaled_data = []
         else:
             np.save(histfile, self.evaled_data)
             self.evaled_data = []
