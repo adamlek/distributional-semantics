@@ -20,6 +20,7 @@ TO ADD:
 
 """
 import numpy as np
+from numpy import linalg as la
 import re
 import random
 import math
@@ -114,6 +115,7 @@ class DistributionalSemantics():
                 self.word_count[word_id][int(self.documents)-1] += 1
 
     def process_data(self, filenames):
+        print('Processing data...')
         success_rate = [0,0]
         for filename in filenames:
             success_rate[1] += 1
@@ -215,11 +217,12 @@ class DistributionalSemantics():
         #< ??? save evaled data here?
         #< ??? Change save name to new
 
+    #< If update occurs w/o save, self.superlist contains the old data and it will be applied 
     #< Updating of data
     def update_contexts(self):
         try:
             print('Re-applying updated vectors...\n')
-            #< load previous vector addition
+            #< load previous vector additions
             data = list(np.load('/home/usr1/git/dist_data/d_data/{0}_hist.npy'.format(self.current_load)))
 
             #< redo additions with new weights
@@ -400,7 +403,9 @@ class DistributionalSemantics():
 
             status = self.process_data(files)
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
-            #< super strict atm, maybe aslong as status[0] > 1, some data from files not successfully read might have been saved tho
+            #< super strict atm, maybe aslong as status[0] > 1, 
+            # some data from files not successfully read might have been saved tho, 
+            # if error occured during reading
             if status[0] == status[1]: 
                 try:
                 #< apply the new data with update=True
@@ -437,7 +442,7 @@ class DistributionalSemantics():
                 print('total weight of word: {0}\n'.format(self.weights[self.vocabulary.index(arg)][0]))
         else:
             print(len(self.vocabulary), 'unique words in vocabulary')
-            print(sum(self.total_words), 'total words') #sum
+            print(sum(self.total_words), 'total words')
             print(self.documents, 'total documents')
             for i, c in enumerate(self.total_words):
                 print('Document {0}: {1} words'.format(i+1, c))
@@ -479,8 +484,8 @@ def main():
         #< input a new data source
         elif setup[0] == 'new':
             new_data = True
-            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_1.txt'])
-#            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
+#            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_1.txt'])
+            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
         #< apply precessed data
         elif setup[0] == 'apply':
@@ -504,7 +509,7 @@ def main():
 
         #< empty input
         if not input_args:
-            print('Please try again')
+            print('Please try again\n')
 
         #< RI similarity between words
         elif input_args[0] == 'sim':
@@ -513,22 +518,22 @@ def main():
                 if sim_res == str(sim_res):
                     print(sim_res)
                 else:
-                    print('Cosine similarity between "{0}" and "{1}" is\n {2}'.format(input_args[1], input_args[2], sim_res))
+                    print('Cosine similarity between "{0}" and "{1}" is\n {2}\n'.format(input_args[1], input_args[2], sim_res))
 
             except Exception as e:
-                print('Invalid input for "sim"')
+                print('Invalid input for "sim"\n')
 
         #< LSA similarity between words, [vocab*vocab] matrix
         elif input_args[0] == 'lsasim':
-            try:
-                lsa_res = distrib.lsasim(input_args[1], input_args[2])
-                if lsa_res == str(lsa_res):
-                    print(lsa_res)
-                else:
-                    print('LSA cosine similarity between "{0}" and "{1}" is\n {2}'.format(input_args[1], input_args[2], lsa_res))
+#            try:
+            lsa_res = distrib.lsasim(input_args[1], input_args[2])
+            if lsa_res == str(lsa_res):
+                print(lsa_res)
+            else:
+                print('LSA cosine similarity between "{0}" and "{1}" is\n {2}\n'.format(input_args[1], input_args[2], lsa_res))
 
-            except:
-                print('Invalid input for "lsasim"')
+#            except:
+#                print('Invalid input for "lsasim"')
 
         #< top 3 words
         elif input_args[0] == 'top':
@@ -542,7 +547,7 @@ def main():
                         print(i+1, dist, word)
 
             except Exception as e:
-                print('Invalid input for "top"')
+                print('Invalid input for "top"\n')
 
         #< quit
         elif input_args[0] == 'exit':
@@ -552,7 +557,7 @@ def main():
         elif input_args[0] == 'save':
             try:
                 distrib.save(input_args[1])
-                print('Successfully saved as', input_args[1])
+                print('Successfully saved as {0}\n'.format(input_args[1]))
 
             except Exception as e:
                 print('Error\n{0}'.format(e))
@@ -589,7 +594,7 @@ def main():
             print('\t"info" information about the data')
             print('\t"info <word>" information about a word')
             print('- ETC')
-            print('\t"exit" to quit')
+            print('\t"exit" to quit\n')
 
         else:
            print('Unrecognized command')
