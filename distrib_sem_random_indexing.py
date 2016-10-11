@@ -42,15 +42,12 @@ class DistributionalSemantics():
         self.total_words = []
 
         self.superlist = []
-        self.evaled_data = [] # !!! check values
+        self.evaled_data = [] 
         #< Current instance, changed when loading/saving
         self.current_load = None
+        self.context_type = 'CBOW' #<'CBOW' or 'skip-gram'
 
         self.window = 1 #< how many words before/after to consider being a part of the context
-
-    #######################################################
-    ################## PROCESSING #########################
-    #######################################################
 
     #< create an index vector for each word
     def rand_index_vector(self):
@@ -59,9 +56,9 @@ class DistributionalSemantics():
         #< distribute (+1)'s and (-1)'s at random indices
         for i in range(0, 4):
             if i%2 == 0:
-                arr[random.randint(0, 1023)] = 10
+                arr[random.randint(0, 1023)] = 1
             else:
-                arr[random.randint(0, 1023)] = -10
+                arr[random.randint(0, 1023)] = -1
 
         return arr
 
@@ -89,7 +86,7 @@ class DistributionalSemantics():
             if word.lstrip('-').isdigit():
                 word = 'NUM'
                 formatted_sentence[i] = 'NUM'
-            #< percentages -> 12% etc
+            #< 12% etc => PERC
             elif '%' in word:
                 word = 'PERC'
                 formatted_sentence[i] = 'PERC'
@@ -141,7 +138,7 @@ class DistributionalSemantics():
                                     formatted_sentence.remove('')
                                 #< save sentence as a sequence of integers
                                 self.superlist.append([self.vocabulary.index(x) for x in formatted_sentence])
-                                # ??? self.superlist.append(list(map(lambda i: formatted_sentence.index(i)), formatted_sentence))
+                                #< ??? self.superlist.append(list(map(lambda i: formatted_sentence.index(i)), formatted_sentence))
 
                     #< Print message to user
                     success_rate[0] += 1
@@ -161,13 +158,13 @@ class DistributionalSemantics():
     #< Assign weight values
     def apply_weights(self, update):
         print('Applying weights...\n')
-        # !!! Differrent weights if word is behind/after?
+        #< ??? Differrent weights if word is behind/after?
         #< Create weights for indexes
         for i, w in enumerate(self.weights):
             if update:
                 self.word_vectors[i] = np.zeros(1024) #reset old word_vectors
             #< inverse document frequency + smoothing
-            #< term frequency
+            #< document term frequency
             idf = math.log1p(self.documents/len(self.weights[i][1:]))
             tf = [(e/self.total_words[n]) for n, e in enumerate(self.word_count[i]) if e != 0]
             self.weights[i][0] = sum(tf)*idf
@@ -186,23 +183,35 @@ class DistributionalSemantics():
         if update:
             self.update_contexts()
 
-    #< CBOW contexts
+    #< CBOW or skip-gram context. Specified at __init__
     #< Read context of word and add vectors
     def ngram_contexts(self, sentence):
         for i, word in enumerate(sentence):
             for n in range(1,self.window+1):
                 #< words before
                 if i - n >= 0: #< exclude negative indexes
-                    prev_word = sentence[i-n]
-                    self.word_vectors[word] += (self.index_vectors[prev_word] * self.weights[prev_word][0])
-                    self.evaled_data.append((word, prev_word))
-
+                    try:
+                        if self.context_type == 'CBOW':
+                            prev_word = sentence[i-n]
+                        elif self.context_type == 'skip-gram':
+                            prev_word = sentence[i-n-1]
+                            
+                        self.word_vectors[word] += (self.index_vectors[prev_word] * self.weights[prev_word][0])
+                        self.evaled_data.append((word, prev_word))
+                    except:
+                        pass
                 #< words after
                 if i + n != len(sentence):
-                    next_word = sentence[i+n]
-                    self.word_vectors[word] += (self.index_vectors[next_word] * self.weights[next_word][0])
-                    self.evaled_data.append((word, next_word))
-
+                    try:
+                        if self.context_type == 'CBOW':
+                            next_word = sentence[i+n]
+                        elif self.context_type == 'skip-gram':
+                            next_word = sentence[i+n+1]
+                            
+                        self.word_vectors[word] += (self.index_vectors[next_word] * self.weights[next_word][0])
+                        self.evaled_data.append((word, next_word))
+                    except:
+                        pass
         #< ??? save evaled data here?
         #< ??? Change save name to new
 
@@ -218,7 +227,7 @@ class DistributionalSemantics():
                 self.word_vectors[x] += (self.index_vectors[y] * self.weights[y][0])
 
             #< Save old data + new data
-            data += self.evaled_data
+            data += self.evaled_data #evaled data contains all previous unsaved vector additions
             np.save('/home/usr1/git/dist_data/d_data/{0}_hist.npy'.format(self.current_load), data)
 
             #< discard data after save
@@ -287,7 +296,7 @@ class DistributionalSemantics():
 
         return(top)
 
-    #< latent semantic analysis cosine similarity
+    #< latent_semantic_analysis-like cosine similarity, takes data from HISTORY OF A SAVED FILE
     def lsasim(self, s_word1, s_word2):
         #< stem input
         word1, word2 = stem(s_word1), stem(s_word2)
@@ -323,7 +332,7 @@ class DistributionalSemantics():
     def graph(self):
 
         points_wf = [x[0] for x in self.weights]
-        points_sf = [math.log(x[1]) for x in self.weights]
+        points_sf = [math.log(sum(x)) for x in self.word_count]
 
         plt.scatter(points_wf, points_sf)
         plt.xlabel("weight")
@@ -364,9 +373,9 @@ class DistributionalSemantics():
     def load(self, filename):
         try:
             data = np.load('/home/usr1/git/dist_data/d_data/{0}.npz'.format(filename))
-
+    
             self.current_load = filename
-
+    
             self.vocabulary = list(data['vocab'])
             self.index_vectors = list(data['i_vec'])
             self.word_vectors = list(data['w_vec'])
@@ -374,7 +383,7 @@ class DistributionalSemantics():
             self.word_count = list(data['wor_c'])
             self.total_words = list(data['t_wor'])
             self.documents = int(data['docum'])
-
+    
             #< clear data after data is extracted
             del data
 
@@ -391,8 +400,8 @@ class DistributionalSemantics():
 
             status = self.process_data(files)
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
-
-            if status[0] == status[1]: #< ??? less strict
+            #< super strict atm, maybe aslong as status[0] > 1, some data from files not successfully read might have been saved tho
+            if status[0] == status[1]: 
                 try:
                 #< apply the new data with update=True
                     self.apply_data(True)
@@ -402,8 +411,7 @@ class DistributionalSemantics():
                     print('Error applying data\n{0}'.format(e))
 
         except Exception as e:
-            print('Error reading data\n{0}'.format(e))
-
+            print('Error reading data, try again\n{0}'.format(e))
 
 
     #< info about the data or individual words
@@ -414,7 +422,8 @@ class DistributionalSemantics():
             if arg not in self.vocabulary:
                 print(arg_w, 'does not exist')
             else:
-                print('Word {0} stemmed to {1}'.format(arg_w, arg))
+                if arg_w != arg:
+                    print('Word "{0}" stemmed to "{1}"'.format(arg_w, arg))
                 print('\nFrequencies:')
                 for i, c in enumerate(self.word_count[self.vocabulary.index(arg)]):
                     if c == 0:
@@ -470,7 +479,7 @@ def main():
         #< input a new data source
         elif setup[0] == 'new':
             new_data = True
-            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_3.txt'])
+            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_1.txt'])
 #            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
         #< apply precessed data
@@ -574,11 +583,11 @@ def main():
             print('\t"sim <word> <word>" similarity between two words')
             print('\t"top <word>" top 3 similar words')
             print('\t"lsasim <word> <word>" LSA similarity between two words')
+            print('- Data operations')
+            print('\t"save <name>" save current data')
+            print('\t"update <path>" update the data with a new textfile')
             print('\t"info" information about the data')
             print('\t"info <word>" information about a word')
-            print('- Data operations')
-            print('\t"save <name>" save current data as "name"')
-            print('\t"update <path>" update the current data with a new data(.txt)')
             print('- ETC')
             print('\t"exit" to quit')
 
