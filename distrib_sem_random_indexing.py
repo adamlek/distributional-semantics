@@ -306,7 +306,8 @@ class DistributionalSemantics():
 
         return(top)
 
-    #< latent_semantic_analysis-like cosine similarity, takes data from HISTORY OF A SAVED FILE
+    #< latent_semantic_analysis/HAL-like cosine similarity, takes data from HISTORY OF A SAVED FILE
+    #< vocabulary*vocabulary matrix
     def lsasim(self, s_word1, s_word2):
         #< stem input
         word1, word2 = stem(s_word1), stem(s_word2)
@@ -609,7 +610,7 @@ def main():
             print('- Semantic operations')
             print('\t"sim <word> <word>" similarity between two words')
             print('\t"top <word>" top 3 similar words')
-            print('\t"lsasim <word> <word>" LSA-like similarity between two words')
+            print('\t"lsasim <word> <word>" LSA/HAL-like similarity between two words')
             print('- Data operations')
             print('\t"save <name>" save current data')
             print('\t"update <path>" update the data with a new textfile')
