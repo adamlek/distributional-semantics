@@ -43,7 +43,7 @@ class DistributionalSemantics():
         self.total_words = []
 
         self.superlist = []
-        self.evaled_data = [] 
+        self.evaled_data = []
         #< Current instance, changed when loading/saving
         self.current_load = None
         self.context_type = 'CBOW' #<'CBOW' or 'skip-gram'
@@ -197,7 +197,7 @@ class DistributionalSemantics():
                             prev_word = sentence[i-n]
                         elif self.context_type == 'skip-gram':
                             prev_word = sentence[i-n-1]
-                            
+
                         self.word_vectors[word] += (self.index_vectors[prev_word] * self.weights[prev_word][0])
                         self.evaled_data.append((word, prev_word))
                     except:
@@ -209,7 +209,7 @@ class DistributionalSemantics():
                             next_word = sentence[i+n]
                         elif self.context_type == 'skip-gram':
                             next_word = sentence[i+n+1]
-                            
+
                         self.word_vectors[word] += (self.index_vectors[next_word] * self.weights[next_word][0])
                         self.evaled_data.append((word, next_word))
                     except:
@@ -217,7 +217,7 @@ class DistributionalSemantics():
         #< ??? save evaled data here?
         #< ??? Change save name to new
 
-    #< If update occurs w/o save, self.superlist contains the old data and it will be applied 
+    #< If update occurs w/o save, self.superlist contains the old data and it will be applied
     #< Updating of data
     def update_contexts(self):
         try:
@@ -326,9 +326,9 @@ class DistributionalSemantics():
 
         #< populate vectors with co-occurences
         for x in w1:
-            vector_w1[x] += 1
+            vector_w1[x] += 1 * self.weights[x][0]
         for x in w2:
-            vector_w2[x] += 1
+            vector_w2[x] += 1 * * self.weights[x][0]
 
         cosine_sim = pw.cosine_similarity(vector_w1.reshape(1, -1), vector_w2.reshape(1, -1))
 
@@ -383,9 +383,9 @@ class DistributionalSemantics():
     def load(self, filename):
         try:
             data = np.load('/home/usr1/git/dist_data/d_data/{0}.npz'.format(filename))
-    
+
             self.current_load = filename
-    
+
             self.vocabulary = list(data['vocab'])
             self.index_vectors = list(data['i_vec'])
             self.word_vectors = list(data['w_vec'])
@@ -393,7 +393,7 @@ class DistributionalSemantics():
             self.word_count = list(data['wor_c'])
             self.total_words = list(data['t_wor'])
             self.documents = int(data['docum'])
-    
+
             #< clear data after data is extracted
             del data
 
@@ -410,10 +410,10 @@ class DistributionalSemantics():
 
             status = self.process_data(files)
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
-            #< super strict atm, maybe aslong as status[0] > 1, 
-            # some data from files not successfully read might have been saved tho, 
+            #< super strict atm, maybe aslong as status[0] > 1,
+            # some data from files not successfully read might have been saved tho,
             # if error occured during reading
-            if status[0] == status[1]: 
+            if status[0] == status[1]:
                 try:
                 #< apply the new data with update=True
                     self.apply_data(True)
