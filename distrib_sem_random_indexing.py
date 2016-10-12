@@ -46,7 +46,8 @@ class DistributionalSemantics():
         self.evaled_data = []
         #< Current instance, changed when loading/saving
         self.current_load = None
-        self.context_type = 'CBOW' #<'CBOW' or 'skip-gram'
+        #<'CBOW': [WORD-BEHIND, WORD, WORDAFTER] or 'skip-gram': [WORD-BEFORE, skip-word, WORD, skip-word, WORD-AFTER]
+        self.context_type = 'CBOW' 
 
         self.window = 1 #< how many words before/after to consider being a part of the context
 
@@ -67,7 +68,7 @@ class DistributionalSemantics():
     def vectorizer(self, formatted_sentence):
         for i, word in enumerate(formatted_sentence):
             #< word: self-preservation => selfpreservation
-            #< nums: 5-6 => NUM
+            #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
             #< remove special things inside words
             formatted_sentence[i] = re.sub('[^a-zåäö0-9%]', '', formatted_sentence[i])
             word = re.sub('[^a-zåäö0-9%]', '', word)
@@ -104,10 +105,12 @@ class DistributionalSemantics():
             #< create weight tools
             else:
                 word_id = self.vocabulary.index(word)
-
+                
+                #< add document occurance 
                 if int(self.documents) not in self.weights[word_id][1:]:
                     self.weights[word_id] = np.concatenate((self.weights[word_id],  [int(self.documents)]))
 
+                #< add word count for each document
                 if len(self.word_count[word_id]) != int(self.documents):
                     for z in range(0,(int(self.documents)-len(self.word_count[word_id]))):
                         self.word_count[word_id] = np.concatenate((self.word_count[word_id],  [0]))
@@ -139,7 +142,7 @@ class DistributionalSemantics():
                                 while '' in formatted_sentence:
                                     formatted_sentence.remove('')
                                 #< save sentence as a sequence of integers
-                                self.superlist.append([self.vocabulary.index(x) for x in formatted_sentence])
+                                self.superlist.append([self.vocabulary.index(x) for x in formatted_sentence]) #< emptied when data is SAVED
                                 #< ??? self.superlist.append(list(map(lambda i: formatted_sentence.index(i)), formatted_sentence))
 
                     #< Print message to user
@@ -165,23 +168,25 @@ class DistributionalSemantics():
         for i, w in enumerate(self.weights):
             if update:
                 self.word_vectors[i] = np.zeros(1024) #reset old word_vectors
-            #< inverse document frequency + smoothing
-            #< document term frequency
+            #< inverse document frequency + smoothing log(1 + (documents_with_term(t)/total_documents))
+            #< document term frequency - freq(term, document_n)/words(document_n)
             idf = math.log1p(self.documents/len(self.weights[i][1:]))
             tf = [(e/self.total_words[n]) for n, e in enumerate(self.word_count[i]) if e != 0]
-            self.weights[i][0] = sum(tf)*idf
+            self.weights[i][0] = sum(tf)*idf #tf-idf as tf * idf
 
     #< default update = False
     #< add index vectors in the words context to the word_vector
     def create_word_vectors(self, update):
         print('Creating word vectors...\n')
 
+        #< sentece-generator
         gen_sentences = (x for x in self.superlist)
 
+        #< read all sentences
         for sentence in gen_sentences:
             self.ngram_contexts(sentence)
 
-        #< create contexts
+        #< when updating with new data, re-do all previous vector additions
         if update:
             self.update_contexts()
 
@@ -214,8 +219,6 @@ class DistributionalSemantics():
                         self.evaled_data.append((word, next_word))
                     except:
                         pass
-        #< ??? save evaled data here?
-        #< ??? Change save name to new
 
     #< If update occurs w/o save, self.superlist contains the old data and it will be applied
     #< Updating of data
@@ -328,22 +331,31 @@ class DistributionalSemantics():
         for x in w1:
             vector_w1[x] += 1 * self.weights[x][0]
         for x in w2:
-            vector_w2[x] += 1 * * self.weights[x][0]
+            vector_w2[x] += 1 * self.weights[x][0]
 
         cosine_sim = pw.cosine_similarity(vector_w1.reshape(1, -1), vector_w2.reshape(1, -1))
 
         return cosine_sim[0][0]
 
     #< !!! ERRORS
-    #< some form of graph
-    def graph(self):
+    #< some form of graph, weight/freq atm
+    def graph(self, word1, word2):
 
-        points_wf = [x[0] for x in self.weights]
-        points_sf = [math.log(sum(x)) for x in self.word_count]
+        if word1 != '' and word2 != '':
+            word1, word2 = stem(word1), stem(word2)
+            points_wf, points_sf = [], []
+            points_wf.append(self.weights[self.vocabulary.index(word1)][0])
+            points_wf.append(self.weights[self.vocabulary.index(word2)][0])
+            points_sf.append(math.log(sum(self.word_count[self.vocabulary.index(word1)])))
+            points_sf.append(math.log(sum(self.word_count[self.vocabulary.index(word2)])))
+            
+        else:
+            points_wf = [x[0] for x in self.weights]
+            points_sf = [sum(x) for x in self.word_count]
 
         plt.scatter(points_wf, points_sf)
         plt.xlabel("weight")
-        plt.ylabel("freq")
+        plt.ylabel("log-e of freq")
         plt.show()
 
 
@@ -528,19 +540,19 @@ def main():
                     print('Cosine similarity between "{0}" and "{1}" is\n {2}\n'.format(input_args[1], input_args[2], sim_res))
 
             except Exception as e:
-                print('Invalid input for "sim"\n')
+                print('Invalid input for "sim"\n', e)
 
         #< LSA similarity between words, [vocab*vocab] matrix
         elif input_args[0] == 'lsasim':
-#            try:
-            lsa_res = distrib.lsasim(input_args[1], input_args[2])
-            if lsa_res == str(lsa_res):
-                print(lsa_res)
-            else:
-                print('LSA cosine similarity between "{0}" and "{1}" is\n {2}\n'.format(input_args[1], input_args[2], lsa_res))
+            try:
+                lsa_res = distrib.lsasim(input_args[1], input_args[2])
+                if lsa_res == str(lsa_res):
+                    print(lsa_res)
+                else:
+                    print('LSA cosine similarity between "{0}" and "{1}" is\n {2}\n'.format(input_args[1], input_args[2], lsa_res))
 
-#            except:
-#                print('Invalid input for "lsasim"')
+            except Exception as e:
+                print('Invalid input for "lsasim"\n', e)
 
         #< top 3 words
         elif input_args[0] == 'top':
@@ -551,7 +563,7 @@ def main():
                 else:
                     print('Top similar words for "{0}" is:'.format(input_args[1]))
                     for i, (dist, word) in enumerate(top_res):
-                        print(i+1, dist, word)
+                        print(i+1, dist[0][0], word)
 
             except Exception as e:
                 print('Invalid input for "top"\n')
@@ -587,14 +599,17 @@ def main():
 
         #<
         elif input_args[0] == 'graph':
-            distrib.graph()
+            try:
+                distrib.graph(input_args[1], input_args[2])
+            except:
+                distrib.graph('','')
 
         #< help information
         elif input_args[0] == 'help':
             print('- Semantic operations')
             print('\t"sim <word> <word>" similarity between two words')
             print('\t"top <word>" top 3 similar words')
-            print('\t"lsasim <word> <word>" LSA similarity between two words')
+            print('\t"lsasim <word> <word>" LSA-like similarity between two words')
             print('- Data operations')
             print('\t"save <name>" save current data')
             print('\t"update <path>" update the data with a new textfile')
