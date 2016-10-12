@@ -48,7 +48,6 @@ class DistributionalSemantics():
         self.current_load = None
         #<'CBOW': [WORD-BEHIND, WORD, WORDAFTER] or 'skip-gram': [WORD-BEFORE, skip-word, WORD, skip-word, WORD-AFTER]
         self.context_type = 'CBOW' 
-
         self.window = 1 #< how many words before/after to consider being a part of the context
 
     #< create an index vector for each word
@@ -190,6 +189,11 @@ class DistributionalSemantics():
         if update:
             self.update_contexts()
 
+    #< add vectors
+    def vector_addition(self, word, target_index):
+        self.word_vectors[word] += (self.index_vectors[target_index] * self.weights[target_index][0])
+        self.evaled_data.append((word, target_index))
+
     #< CBOW or skip-gram context. Specified at __init__
     #< Read context of word and add vectors
     def ngram_contexts(self, sentence):
@@ -203,8 +207,8 @@ class DistributionalSemantics():
                         elif self.context_type == 'skip-gram':
                             prev_word = sentence[i-n-1]
 
-                        self.word_vectors[word] += (self.index_vectors[prev_word] * self.weights[prev_word][0])
-                        self.evaled_data.append((word, prev_word))
+                        self.vector_addition(word, prev_word)                        
+                        
                     except:
                         pass
                 #< words after
@@ -215,8 +219,8 @@ class DistributionalSemantics():
                         elif self.context_type == 'skip-gram':
                             next_word = sentence[i+n+1]
 
-                        self.word_vectors[word] += (self.index_vectors[next_word] * self.weights[next_word][0])
-                        self.evaled_data.append((word, next_word))
+                        self.vector_addition(word, next_word)                        
+                        
                     except:
                         pass
 
@@ -352,7 +356,7 @@ class DistributionalSemantics():
             
         else:
             points_wf = [x[0] for x in self.weights]
-            points_sf = [sum(x) for x in self.word_count]
+            points_sf = [math.log(sum(x) for x in self.word_count)]
 
         plt.scatter(points_wf, points_sf)
         plt.xlabel("weight")
@@ -466,6 +470,13 @@ class DistributionalSemantics():
             print(self.documents, 'total documents')
             for i, c in enumerate(self.total_words):
                 print('Document {0}: {1} words'.format(i+1, c))
+    
+    def settings(self, setting, val):
+        if setting == 'window':
+            self.window = val
+        elif setting == 'context':
+            if val in ['CBOW', 'skip-gram']:
+                self.context_type = val
 
 
 #######################################################
@@ -504,8 +515,8 @@ def main():
         #< input a new data source
         elif setup[0] == 'new':
             new_data = True
-#            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_1.txt'])
-            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
+            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_3.txt'])
+#            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
         #< apply precessed data
         elif setup[0] == 'apply':
