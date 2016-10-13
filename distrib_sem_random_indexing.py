@@ -47,7 +47,8 @@ class DistributionalSemantics():
         #< Current instance, changed when loading/saving
         self.current_load = None
         #<'CBOW': [WORD-BEHIND, WORD, WORDAFTER] or 'skip-gram': [WORD-BEFORE, skip-word, WORD, skip-word, WORD-AFTER]
-        self.context_type = 'CBOW' 
+        self.context_type = 'skip-gram' 
+        self.ct = {'CBOW': 0, 'skip-gram': 1}
         self.window = 1 #< how many words before/after to consider being a part of the context
 
     #< create an index vector for each word
@@ -65,32 +66,33 @@ class DistributionalSemantics():
 
     #< Read sentences from data file
     def vectorizer(self, formatted_sentence):
+        
+        upd_sentence = []        
+        
         for i, word in enumerate(formatted_sentence):
             #< word: self-preservation => selfpreservation
             #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
+        
             #< remove special things inside words
-            formatted_sentence[i] = re.sub('[^a-zåäö0-9%]', '', formatted_sentence[i])
             word = re.sub('[^a-zåäö0-9%]', '', word)
 
             #< stem and replace word
             word = stem(word)
-            formatted_sentence[i] = stem(formatted_sentence[i])
 
             #< dont add null words
             if word == '':
                 continue
-
-            self.total_words[self.documents-1] += 1
-
+            
             #< FINE TUNE DATA
             #< change numbers to NUM
             if word.lstrip('-').isdigit():
                 word = 'NUM'
-                formatted_sentence[i] = 'NUM'
             #< 12% etc => PERC
             elif '%' in word:
                 word = 'PERC'
-                formatted_sentence[i] = 'PERC'
+
+            upd_sentence.append(word)
+            self.total_words[self.documents-1] += 1
 
             #< set up vectors
             if word not in self.vocabulary:
@@ -100,7 +102,7 @@ class DistributionalSemantics():
                 self.weights.append([0, int(self.documents)])
                 self.word_count.append([0]*int(self.documents))
                 self.word_count[-1][-1] = 1
-
+                
             #< create weight tools
             else:
                 word_id = self.vocabulary.index(word)
@@ -115,6 +117,8 @@ class DistributionalSemantics():
                         self.word_count[word_id] = np.concatenate((self.word_count[word_id],  [0]))
 
                 self.word_count[word_id][int(self.documents)-1] += 1
+        
+        return upd_sentence
 
     def process_data(self, filenames):
         print('Processing data...')
@@ -134,12 +138,8 @@ class DistributionalSemantics():
                             #< format sentence
                             #< remove special things before/after word
                             formatted_sentence = [w.strip().lower() for w in sentence]
-                            #< only add sentences longer than 0 words
                             if formatted_sentence:
-                                self.vectorizer(formatted_sentence)
-                                #< remove [''] and '' elements
-                                while '' in formatted_sentence:
-                                    formatted_sentence.remove('')
+                                formatted_sentence = self.vectorizer(formatted_sentence)
                                 #< save sentence as a sequence of integers
                                 self.superlist.append([self.vocabulary.index(x) for x in formatted_sentence]) #< emptied when data is SAVED
                                 #< ??? self.superlist.append(list(map(lambda i: formatted_sentence.index(i)), formatted_sentence))
@@ -189,10 +189,11 @@ class DistributionalSemantics():
         if update:
             self.update_contexts()
 
-    #< add vectors
-    def vector_addition(self, word, target_index):
+    #< add index vectors * weights to word vectors
+    def vector_addition(self, word, target_index, update = False):
         self.word_vectors[word] += (self.index_vectors[target_index] * self.weights[target_index][0])
-        self.evaled_data.append((word, target_index))
+        if not update:        
+            self.evaled_data.append((word, target_index))
 
     #< CBOW or skip-gram context. Specified at __init__
     #< Read context of word and add vectors
@@ -202,26 +203,17 @@ class DistributionalSemantics():
                 #< words before
                 if i - n >= 0: #< exclude negative indexes
                     try:
-                        if self.context_type == 'CBOW':
-                            prev_word = sentence[i-n]
-                        elif self.context_type == 'skip-gram':
-                            prev_word = sentence[i-n-1]
-
+                        prev_word = sentence[i-n-self.ct[self.context_type]]
                         self.vector_addition(word, prev_word)                        
-                        
                     except:
                         pass
+                    
                 #< words after
                 if i + n != len(sentence):
                     try:
-                        if self.context_type == 'CBOW':
-                            next_word = sentence[i+n]
-                        elif self.context_type == 'skip-gram':
-                            next_word = sentence[i+n+1]
-
-                        self.vector_addition(word, next_word)                        
-                        
-                    except:
+                        next_word = sentence[i+n+self.ct[self.context_type]]
+                        self.vector_addition(word, next_word)                                               
+                    except:                      
                         pass
 
     #< If update occurs w/o save, self.superlist contains the old data and it will be applied
@@ -234,7 +226,7 @@ class DistributionalSemantics():
 
             #< redo additions with new weights
             for x, y in data:
-                self.word_vectors[x] += (self.index_vectors[y] * self.weights[y][0])
+                self.vector_addition(x, y, True)
 
             #< Save old data + new data
             data += self.evaled_data #evaled data contains all previous unsaved vector additions
@@ -273,7 +265,7 @@ class DistributionalSemantics():
         return(cosine_sim[0][0])
 
     #< top 3
-    def similarity_top(self ,s_word):
+    def similarity_top(self, s_word):
         #< stem input
         word = stem(s_word)
 
@@ -378,7 +370,9 @@ class DistributionalSemantics():
                  weigh = self.weights,
                  wor_c = self.word_count,
                  t_wor = self.total_words,
-                 docum = self.documents)
+                 docum = self.documents,
+                 conte = self.context_type,
+                 windo = self.window)
 
         histfile = '/home/usr1/git/dist_data/d_data/{0}_hist.npy'.format(filename)
         self.current_load = filename
@@ -410,6 +404,8 @@ class DistributionalSemantics():
             self.word_count = list(data['wor_c'])
             self.total_words = list(data['t_wor'])
             self.documents = int(data['docum'])
+            self.context_type = str(data['conte'])
+            self.window = int(data['windo'])
 
             #< clear data after data is extracted
             del data
@@ -465,18 +461,26 @@ class DistributionalSemantics():
                 print('Inverse document frequency: {0}'.format(math.log1p(self.documents/len(self.weights[self.vocabulary.index(arg)][1:]))))
                 print('total weight of word: {0}\n'.format(self.weights[self.vocabulary.index(arg)][0]))
         else:
+            print('Context type: {0}, window size: {1}\n'.format(self.context_type, self.window))
             print(len(self.vocabulary), 'unique words in vocabulary')
             print(sum(self.total_words), 'total words')
             print(self.documents, 'total documents')
             for i, c in enumerate(self.total_words):
                 print('Document {0}: {1} words'.format(i+1, c))
+            
     
+    #< change settings BEFORE LOADING DATA
     def settings(self, setting, val):
         if setting == 'window':
             self.window = val
+            return 'Window size is now {0}'.format(self.window)
+            
         elif setting == 'context':
             if val in ['CBOW', 'skip-gram']:
                 self.context_type = val
+                return 'Context is now {0}'.format(self.context_type)
+        else:
+            return 'Failed to apply changes, try again'
 
 
 #######################################################
@@ -492,7 +496,7 @@ def main():
     #< init data
     while True:
         if new_data:
-            print('Enter new data by typing "new <path>" finish by typing "apply"\n')
+            print('Enter new data by typing "new <path>" , "set setting value" to change context settings and finish by typing "apply"\n')
         else:
             print('Enter new data source by typing "new <path>" and load saved data by typing "load <name>"\n')
 
@@ -515,7 +519,7 @@ def main():
         #< input a new data source
         elif setup[0] == 'new':
             new_data = True
-            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_3.txt'])
+            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_1.txt'])
 #            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
         #< apply precessed data
@@ -525,6 +529,13 @@ def main():
                 break
             else:
                 print('Invalid command')
+        #< change settings before new data is applied
+        elif setup[0] == 'set':
+            try:
+                print(distrib.settings(setup[1], setup[2]))
+            except Exception as e:
+                print(e)
+                
         #< exit
         elif setup[0] == 'exit':
             sys.exit()
@@ -609,7 +620,7 @@ def main():
             except:
                 distrib.info(None)
 
-        #<
+        #< graph, log-e freq/weight
         elif input_args[0] == 'graph':
             try:
                 distrib.graph(input_args[1], input_args[2])
@@ -627,6 +638,7 @@ def main():
             print('\t"update <path>" update the data with a new textfile')
             print('\t"info" information about the data')
             print('\t"info <word>" information about a word')
+            print('\t"set <context/window> <value>" to set context type(CBOW or skip-gram) or window size')
             print('- ETC')
             print('\t"exit" to quit\n')
 
