@@ -47,7 +47,7 @@ class DistributionalSemantics():
         #< Current instance, changed when loading/saving
         self.current_load = None
         #<'CBOW': [WORD-BEHIND, WORD, WORDAFTER] or 'skip-gram': [WORD-BEFORE, skip-word, WORD, skip-word, WORD-AFTER]
-        self.context_type = 'skip-gram' 
+        self.context_type = 'CBOW' 
         self.ct = {'CBOW': 0, 'skip-gram': 1}
         self.window = 1 #< how many words before/after to consider being a part of the context
 
@@ -66,7 +66,6 @@ class DistributionalSemantics():
 
     #< Read sentences from data file
     def vectorizer(self, formatted_sentence):
-        
         upd_sentence = []        
         
         for i, word in enumerate(formatted_sentence):
@@ -195,6 +194,7 @@ class DistributionalSemantics():
         if not update:        
             self.evaled_data.append((word, target_index))
 
+    #< START + STOP words? assign weights?
     #< CBOW or skip-gram context. Specified at __init__
     #< Read context of word and add vectors
     def ngram_contexts(self, sentence):
@@ -533,6 +533,7 @@ def main():
         elif setup[0] == 'set':
             try:
                 print(distrib.settings(setup[1], setup[2]))
+            
             except Exception as e:
                 print(e)
                 
@@ -624,6 +625,7 @@ def main():
         elif input_args[0] == 'graph':
             try:
                 distrib.graph(input_args[1], input_args[2])
+            
             except:
                 distrib.graph('','')
 
