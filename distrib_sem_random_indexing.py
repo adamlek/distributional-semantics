@@ -20,7 +20,6 @@ TO ADD:
 
 """
 import numpy as np
-from numpy import linalg as la
 import re
 import random
 import math
@@ -166,8 +165,8 @@ class DistributionalSemantics():
         for i, w in enumerate(self.weights):
             if update:
                 self.word_vectors[i] = np.zeros(1024) #reset old word_vectors
-            #< inverse document frequency + smoothing log(1 + (documents_with_term(t)/total_documents))
-            #< document term frequency - freq(term, document_n)/words(document_n)
+            #< inverse document frequency + smoothing -> log(1 + (documents_with_term(t)/total_documents))
+            #< document term frequency -> freq(term, document_n)/words(document_n)
             idf = math.log1p(self.documents/len(self.weights[i][1:]))
             tf = [(e/self.total_words[n]) for n, e in enumerate(self.word_count[i]) if e != 0]
             self.weights[i][0] = sum(tf)*idf #tf-idf as tf * idf
@@ -348,11 +347,11 @@ class DistributionalSemantics():
             
         else:
             points_wf = [x[0] for x in self.weights]
-            points_sf = [math.log(sum(x) for x in self.word_count)]
+            points_sf = [sum(x) for x in self.word_count]
 
         plt.scatter(points_wf, points_sf)
         plt.xlabel("weight")
-        plt.ylabel("log-e of freq")
+        plt.ylabel("freq")
         plt.show()
 
 
@@ -445,7 +444,7 @@ class DistributionalSemantics():
             arg = stem(arg_w)
 
             if arg not in self.vocabulary:
-                print(arg_w, 'does not exist')
+                print(arg_w, 'does not exist\n')
             else:
                 if arg_w != arg:
                     print('Word "{0}" stemmed to "{1}"'.format(arg_w, arg))
@@ -467,6 +466,7 @@ class DistributionalSemantics():
             print(self.documents, 'total documents')
             for i, c in enumerate(self.total_words):
                 print('Document {0}: {1} words'.format(i+1, c))
+            print('')
             
     
     #< change settings BEFORE LOADING DATA
@@ -476,7 +476,7 @@ class DistributionalSemantics():
             return 'Window size is now {0}'.format(self.window)
             
         elif setting == 'context':
-            if val in ['CBOW', 'skip-gram']:
+            if val in self.ct.keys():
                 self.context_type = val
                 return 'Context is now {0}'.format(self.context_type)
         else:
@@ -519,8 +519,8 @@ def main():
         #< input a new data source
         elif setup[0] == 'new':
             new_data = True
-            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_1.txt'])
-#            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
+#            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_1.txt'])
+            status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
             print('{0}/{1} files successfully read'.format(status[0], status[1]))
         #< apply precessed data
         elif setup[0] == 'apply':
@@ -588,6 +588,7 @@ def main():
                     print('Top similar words for "{0}" is:'.format(input_args[1]))
                     for i, (dist, word) in enumerate(top_res):
                         print(i+1, dist[0][0], word)
+                    print('')
 
             except Exception as e:
                 print('Invalid input for "top"\n')
