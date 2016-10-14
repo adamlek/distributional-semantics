@@ -52,14 +52,14 @@ class DistributionalSemantics():
 
     #< create an index vector for each word
     def rand_index_vector(self):
-        arr = np.zeros(1024)
+        arr = np.zeros(2024)
 
         #< distribute (+1)'s and (-1)'s at random indices
         for i in range(0, 4):
             if i%2 == 0:
-                arr[random.randint(0, 1023)] = 1
+                arr[random.randint(0, 2023)] = 1
             else:
-                arr[random.randint(0, 1023)] = -1
+                arr[random.randint(0, 2023)] = -1
 
         return arr
 
@@ -96,10 +96,10 @@ class DistributionalSemantics():
             if word not in self.vocabulary:
                 self.vocabulary.append(word)
                 self.index_vectors.append(self.rand_index_vector())
-                self.word_vectors.append(np.zeros(1024))
+                self.word_vectors.append(np.zeros(2024))
                 self.weights.append([0, int(self.documents)])
                 self.word_count.append([0]*int(self.documents))
-                self.word_count[-1][-1] = 1
+                self.word_count[-1][-1] = 1 #< update word count of the last element added
                 
             #< create weight tools
             else:
@@ -159,15 +159,15 @@ class DistributionalSemantics():
 
     #< Assign weight values
     def apply_weights(self, update):
-        print('Applying weights...\n')
+        print('Calculating weights...\n')
         #< ??? Differrent weights if word is behind/after?
         #< Create weights for indexes
         for i, w in enumerate(self.weights):
             if update:
-                self.word_vectors[i] = np.zeros(1024) #reset old word_vectors
-            #< inverse document frequency + smoothing -> log(1 + (documents_with_term(t)/total_documents))
+                self.word_vectors[i] = np.zeros(2024) #reset old word_vectors
+            #< inverse document frequency ALT1:[+ smoothing]-> log(ALT1[1 +] (documents_with_term(t)/total_documents))
             #< document term frequency -> freq(term, document_n)/words(document_n)
-            idf = math.log1p(self.documents/len(self.weights[i][1:]))
+            idf = math.log(self.documents/len(self.weights[i][1:]))
             tf = [(e/self.total_words[n]) for n, e in enumerate(self.word_count[i]) if e != 0]
             self.weights[i][0] = sum(tf)*idf #tf-idf as tf * idf
 
@@ -421,7 +421,7 @@ class DistributionalSemantics():
                 files.append(path)
 
             status = self.process_data(files)
-            print('{0}/{1} files successfully read'.format(status[0], status[1]))
+            print('{0}/{1} files successfully read\n'.format(status[0], status[1]))
             #< super strict atm, maybe aslong as status[0] > 1,
             # some data from files not successfully read might have been saved tho,
             # if error occured during reading
@@ -460,7 +460,7 @@ class DistributionalSemantics():
                 print('Inverse document frequency: {0}'.format(math.log1p(self.documents/len(self.weights[self.vocabulary.index(arg)][1:]))))
                 print('total weight of word: {0}\n'.format(self.weights[self.vocabulary.index(arg)][0]))
         else:
-            print('Context type: {0}, window size: {1}\n'.format(self.context_type, self.window))
+            print('Current load: {0}\nContext type: {1}, window size: {2}\n'.format(self.current_load, self.context_type, self.window))
             print(len(self.vocabulary), 'unique words in vocabulary')
             print(sum(self.total_words), 'total words')
             print(self.documents, 'total documents')
@@ -521,7 +521,7 @@ def main():
             new_data = True
 #            status = distrib.process_data(['/home/usr1/git/dist_data/test_doc_1.txt'])
             status = distrib.process_data(['/home/usr1/git/dist_data/austen-emma.txt'])
-            print('{0}/{1} files successfully read'.format(status[0], status[1]))
+            print('{0}/{1} files successfully read\n'.format(status[0], status[1]))
         #< apply precessed data
         elif setup[0] == 'apply':
             if new_data:
