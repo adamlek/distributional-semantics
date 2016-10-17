@@ -46,7 +46,7 @@ class DistributionalSemantics():
         #< Current instance, changed when loading/saving
         self.current_load = None
         #<'CBOW': [WORD-BEHIND, WORD, WORDAFTER] or 'skip-gram': [WORD-BEFORE, skip-word, WORD, skip-word, WORD-AFTER]
-        self.context_type = 'CBOW' 
+        self.context_type = 'CBOW'
         self.ct = {'CBOW': 0, 'skip-gram': 1}
         self.window = 1 #< how many words before/after to consider being a part of the context
 
@@ -65,12 +65,12 @@ class DistributionalSemantics():
 
     #< Read sentences from data file
     def vectorizer(self, formatted_sentence):
-        upd_sentence = []        
-        
+        upd_sentence = []
+
         for i, word in enumerate(formatted_sentence):
             #< word: self-preservation => selfpreservation
             #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
-        
+
             #< remove special things inside words
             word = re.sub('[^a-zåäö0-9%]', '', word)
 
@@ -80,7 +80,7 @@ class DistributionalSemantics():
             #< dont add null words
             if word == '':
                 continue
-            
+
             #< FINE TUNE DATA
             #< change numbers to NUM
             if word.lstrip('-').isdigit():
@@ -100,14 +100,14 @@ class DistributionalSemantics():
                 self.weights.append([0, int(self.documents)])
                 self.word_count.append([0]*int(self.documents))
                 self.word_count[-1][-1] = 1 #< update word count of the last element added
-                
+
             #< create weight tools
             else:
                 word_id = self.vocabulary.index(word)
-                
-                #< add document occurance 
+
+                #< add document occurance
                 if int(self.documents) not in self.weights[word_id][1:]:
-                    self.weights[word_id] = np.concatenate((self.weights[word_id],  [int(self.documents)]))
+                    self.weights[word_id] = np.concatenate((self.weights[word_id], [int(self.documents)]))
 
                 #< add word count for each document
                 if len(self.word_count[word_id]) != int(self.documents):
@@ -115,7 +115,7 @@ class DistributionalSemantics():
                         self.word_count[word_id] = np.concatenate((self.word_count[word_id],  [0]))
 
                 self.word_count[word_id][int(self.documents)-1] += 1
-        
+
         return upd_sentence
 
     def process_data(self, filenames):
@@ -190,7 +190,7 @@ class DistributionalSemantics():
     #< add index vectors * weights to word vectors
     def vector_addition(self, word, target_index, update = False):
         self.word_vectors[word] += (self.index_vectors[target_index] * self.weights[target_index][0])
-        if not update:        
+        if not update:
             self.evaled_data.append((word, target_index))
 
     #< START + STOP words? assign weights?
@@ -203,16 +203,16 @@ class DistributionalSemantics():
                 if i - n >= 0: #< exclude negative indexes
                     try:
                         prev_word = sentence[i-n-self.ct[self.context_type]]
-                        self.vector_addition(word, prev_word)                        
+                        self.vector_addition(word, prev_word)
                     except:
                         pass
-                    
+
                 #< words after
                 if i + n != len(sentence):
                     try:
                         next_word = sentence[i+n+self.ct[self.context_type]]
-                        self.vector_addition(word, next_word)                                               
-                    except:                      
+                        self.vector_addition(word, next_word)
+                    except:
                         pass
 
     #< If update occurs w/o save, self.superlist contains the old data and it will be applied
@@ -344,7 +344,7 @@ class DistributionalSemantics():
             points_wf.append(self.weights[self.vocabulary.index(word2)][0])
             points_sf.append(math.log(sum(self.word_count[self.vocabulary.index(word1)])))
             points_sf.append(math.log(sum(self.word_count[self.vocabulary.index(word2)])))
-            
+
         else:
             points_wf = [x[0] for x in self.weights]
             points_sf = [sum(x) for x in self.word_count]
@@ -467,18 +467,23 @@ class DistributionalSemantics():
             for i, c in enumerate(self.total_words):
                 print('Document {0}: {1} words'.format(i+1, c))
             print('')
-            
-    
+
+
     #< change settings BEFORE LOADING DATA
     def settings(self, setting, val):
         if setting == 'window':
-            self.window = val
-            return 'Window size is now {0}'.format(self.window)
-            
+            if val in [1,2,3,4,5]:
+                self.window = val
+                return 'Window size is now {0}'.format(self.window)
+            else:
+                return 'Please select a window size between 1 and 5'
+
         elif setting == 'context':
             if val in self.ct.keys():
                 self.context_type = val
                 return 'Context is now {0}'.format(self.context_type)
+            else:
+                return 'Please select one of the following: {0}'.format(self.ct.keys())
         else:
             return 'Failed to apply changes, try again'
 
@@ -533,10 +538,10 @@ def main():
         elif setup[0] == 'set':
             try:
                 print(distrib.settings(setup[1], setup[2]))
-            
+
             except Exception as e:
                 print(e)
-                
+
         #< exit
         elif setup[0] == 'exit':
             sys.exit()
@@ -626,7 +631,7 @@ def main():
         elif input_args[0] == 'graph':
             try:
                 distrib.graph(input_args[1], input_args[2])
-            
+
             except:
                 distrib.graph('','')
 
