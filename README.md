@@ -26,6 +26,7 @@ Modules:
 * stemming.porter2.stem
 
 Classes:
+
 RandomIndexing:
 * process_data: Reads a .txt file and creates a vocubulary and a list of sentences
 	* sentence_formatter: Formats sentences and builds the vocabulary
