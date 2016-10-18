@@ -30,8 +30,8 @@ Class5: Data operations
     output: message
 
 """
-
-from randomindexer import RandomIndexing
+from randomindexer import DataReader
+from randomindexer import RandomIndexer
 from randomindexer import Weighter
 from randomindexer import Contexts
 from randomindexer import Similarity
@@ -71,25 +71,24 @@ def main():
         #< input a new data source
         elif setup[0] == 'new':
             new_data = True
-            sentences, dist_data = ri.process_data(['/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
-#            sentences, dist_data = ri.process_data(['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
-
+            dr = DataReader()
+            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
+#            sentences, dist_data = ri.process_data(['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_2.txt'])
+            ri = RandomIndexer()
+            vector_vocabulary = ri.vocabulary_vectorizer(vocabulary)
 
         #< apply precessed data
         elif setup[0] == 'apply':
             if new_data:
-                docs = []
-                for doc in dist_data['documents']:
-                    docs.append(dist_data['documents'][doc]['words'])
-                
-                wgt = Weighter('tf-idf', docs)
 
-                for word in dist_data['vocabulary']:
-                    dist_data['vocabulary'][word]['random_vector'] = wgt.weight(dist_data['vocabulary'][word]['random_vector'], dist_data['vocabulary'][word]['word_count'])
+                wgt = Weighter('tf-idf', documents)
 
-                rc = Contexts(dist_data['vocabulary'], settings[0], settings[1])
-                dist_data['vocabulary'], dist_data['data_info'] = rc.read_data(sentences)
-                dt = DataOptions(dist_data['vocabulary'], dist_data['documents'], dist_data['data_info'])
+                for x in vector_vocabulary:
+                    vector_vocabulary[x]['random_vector'], tf_idf = wgt.weight(x, vector_vocabulary[x]['random_vector'])
+
+                rc = Contexts(vector_vocabulary, settings[0], settings[1])
+                vector_vocabulary, data_info = rc.read_data(sentences)
+                dt = DataOptions(vocabulary, documents, data_info)
                 break
             else:
                 print('Invalid command')
@@ -112,7 +111,8 @@ def main():
 
     #< User interface after data has been loaded
     print('Type "sim <word1> <word2>" for similarity between two words, "top <word>" for top 3 similar words, "help" to display availible commands and "exit" to quit\n')
-    sim = Similarity(dist_data['vocabulary'])
+
+    sim = Similarity(vector_vocabulary)
 
     while True:
         choice = input('> ')
