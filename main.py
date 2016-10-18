@@ -33,16 +33,14 @@ Class5: Data operations
 
 from randomindexer import RandomIndexing
 from randomindexer import Weighter
-from randomindexer import ReadContexts
+from randomindexer import Contexts
 from randomindexer import Similarity
 from randomindexer import DataOptions
 
 import sys
-import numpy as np
 
 def main():
     ri = RandomIndexing()
-    wgt = Weighter('tf-idf')
     dt = DataOptions()
 
     print('Welcome to Distributial Semantics with Random Indexing\n')
@@ -73,8 +71,8 @@ def main():
         #< input a new data source
         elif setup[0] == 'new':
             new_data = True
-#            sentences, dist_data = ri.process_data(['/home/usr1/git/dist_data/test_doc_0.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/austen-emma.txt'])
-            sentences, dist_data = ri.process_data(['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
+            sentences, dist_data = ri.process_data(['/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
+#            sentences, dist_data = ri.process_data(['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
 
 
         #< apply precessed data
@@ -83,11 +81,13 @@ def main():
                 docs = []
                 for doc in dist_data['documents']:
                     docs.append(dist_data['documents'][doc]['words'])
+                
+                wgt = Weighter('tf-idf', docs)
 
                 for word in dist_data['vocabulary']:
-                    dist_data['vocabulary'][word]['random_vector'] = wgt.weight(dist_data['vocabulary'][word]['random_vector'], dist_data['vocabulary'][word]['word_count'], docs)
+                    dist_data['vocabulary'][word]['random_vector'] = wgt.weight(dist_data['vocabulary'][word]['random_vector'], dist_data['vocabulary'][word]['word_count'])
 
-                rc = ReadContexts(dist_data['vocabulary'], settings[0], settings[1])
+                rc = Contexts(dist_data['vocabulary'], settings[0], settings[1])
                 dist_data['vocabulary'], dist_data['data_info'] = rc.read_data(sentences)
                 dt = DataOptions(dist_data['vocabulary'], dist_data['documents'], dist_data['data_info'])
                 break
@@ -125,7 +125,7 @@ def main():
         #< RI similarity between words
         elif input_args[0] == 'sim':
             try:
-                sim_res = sim.cosine(input_args[1].lower(), input_args[2].lower())
+                sim_res = sim.cosine_similarity(input_args[1].lower(), input_args[2].lower())
                 if sim_res == str(sim_res):
                     print(sim_res)
                 else:
@@ -180,14 +180,11 @@ def main():
         elif input_args[0] == 'help':
             print('- Semantic operations')
             print('\t"sim <word> <word>" similarity between two words')
-            print('\t"top <word>" top 3 similar words')
-            print('\t"lsasim <word> <word>" LSA/HAL-like similarity between two words')
+            print('\t"top <word>" top 5 similar words')
             print('- Data operations')
             print('\t"save <name>" save current data')
-            print('\t"update <path>" update the data with a new textfile')
             print('\t"info" information about the data')
             print('\t"info <word>" information about a word')
-            print('\t"set <context/window> <value>" to set context type(CBOW or skip-gram) or window size')
             print('- ETC')
             print('\t"exit" to quit\n')
 
