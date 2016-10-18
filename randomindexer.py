@@ -4,17 +4,6 @@ Created on Mon Oct 17 22:21:38 2016
 
 @author: Adam Ek
 
-load: DONE
-save: DONE
-update: NOT DONE
-
-cosine: DONE
-top: DONE
-
-create vectors: DONE
-read file: DONE
-read sentences: DONE
-weighting: DONE
 """
 
 import numpy as np
@@ -23,7 +12,6 @@ import re
 import random
 import math
 import sklearn.metrics.pairwise as pw
-import matplotlib.pyplot as plt
 from stemming.porter2 import stem #ENGLISH
 
 
@@ -34,7 +22,7 @@ class RandomIndexing():
         output:
             success rate,
             [sentences],
-            { vocabulary: word: {word_vector, random_vector, word_count}, document: name: {words, unique_words}, data_info: None }
+            { vocabulary: word: {word_vector, random_vector, word_count}, documents: name: {words, unique_words}, data_info: None }
 
     create_vectors = False
         input: .txt file
@@ -60,8 +48,9 @@ class RandomIndexing():
             try:
                 with open(filename) as training:
                     print('Reading file {0}...'.format(filename))
-                    self.documents[filename] = {'words': 0, 'unique_words': 0 }
-                    self.current_doc = filename
+                    filen = re.search('(\w*).txt', filename)
+                    self.documents[filen.group(0)] = {'words': 0, 'unique_words': 0 }
+                    self.current_doc = filen.group(0)
                     for row in training:
                          #< separate row into sentences
                          row = row.strip().split('. ')
@@ -113,9 +102,10 @@ class RandomIndexing():
                 word = 'PERC'
 
             upd_sentence.append(word)
-            self.documents[self.current_doc]['words'] += 1
-
+            
             if vectorize:
+                self.documents[self.current_doc]['words'] += 1                
+                
                 #< set up random_vectors
                 if word not in self.vocabulary.keys():
                     self.vocabulary[word]['word_vector'] = np.zeros(1024)
@@ -152,31 +142,34 @@ class RandomIndexing():
 #< apply weights to vectors
 class Weighter():
     """
-    class init: scheme (of no consequence atm)    
+    class init: 
+        scheme (of no consequence atm)    
+        wc_doc = [word count in doc_n]
     
-    input:
-        vector,
-        [word_count in doc_n, ...],
-        [total_words in doc_n, ...]
-    output:
-        random_vector
+    weight:
+        input:
+            vector,
+            [word_count in doc_n, ...],
+        output:
+            random_vector
     """
-    def __init__(self, scheme):
+    def __init__(self, scheme, wc_doc):
         self.scheme = scheme
+        self.wc_doc = wc_doc
 #        self.schemes = {'tf-idf': sum(x)/len(d) * math.log(sum(d)/len([z for z in x if z != 0]))}
 
     def weight(self, random_vector, count, docs):
-        n_docs, words_doc = len(docs), sum(docs)
+        
+        #calculate tf and idf
+        tf = sum([1 + math.log10(x/y) for x, y in zip(count, self.wc_doc) if x != 0])
+        idf = math.log10(len(self.wc_doc)/len([x for x in count if x != 0]))
+                
+        #< return vector * tf-idf
+        return random_vector * (tf * idf)
 
-        #< update vector values with tf-idf (data for this contained in vocabulary and documents)
-        tf_idf = (sum(count)/words_doc) * (math.log1p(n_docs/len([x for x in count if x != 0])))
-
-        #< return updated random vectors
-        return random_vector * tf_idf
 
 
-
-class ReadContexts():
+class Contexts():
     """
     input:
         data: vocabulary: word: {word_vector, random_vector, (word_counts)}
@@ -212,7 +205,7 @@ class ReadContexts():
         if update:
             self.update_contexts()
 
-        return self.vocabulary, {'name': 'temp',
+        return self.vocabulary, {'name': 'Temporary data',
                                   'context': self.context,
                                   'window': self.window,
                                   'weights': 'tf-idf'}
@@ -225,8 +218,7 @@ class ReadContexts():
                     try:
                         prev_word = sentence[i-n-self.context_types[self.context]]
                         self.vector_addition(word, prev_word)
-                    except Exception as e:
-                        print(e)
+                    except:
                         pass
 
                 #< words after
@@ -234,8 +226,7 @@ class ReadContexts():
                     try:
                         next_word = sentence[i+n+self.context_types[self.context]]
                         self.vector_addition(word, next_word)
-                    except Exception as e:
-                        print(e)
+                    except:
                         pass
 
     def vector_addition(self, word, target_word):
@@ -260,7 +251,7 @@ class Similarity():
     def __init__(self, vocabulary):
         self.vocabulary = vocabulary
 
-    def cosine(self, s_word1, s_word2):
+    def cosine_similarity(self, s_word1, s_word2):
         #< stem input
         word1, word2 = stem(s_word1), stem(s_word2)
 
@@ -273,9 +264,18 @@ class Similarity():
             i_word1 = self.vocabulary[word1]['word_vector']
             i_word2 = self.vocabulary[word2]['word_vector']
 
-        cosine_sim = pw.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
-
-        return(cosine_sim[0][0])
+        return self.cosine_measure(i_word1, i_word2)
+        
+    #< Dot product
+    def dot(self, vector1, vector2):
+        return sum(map(lambda x: x[0] * x[1], zip(vector1, vector2)))
+    
+    #< Cosine similarity
+    def cosine_measure(self, vector1, vector2):        
+        vec1 = math.sqrt(self.dot(vector1, vector1))
+        vec2 = math.sqrt(self.dot(vector2, vector2))
+        
+        return self.dot(vector1, vector2) / (vec1 * vec2)
 
     def top(self, s_word):
         word = stem(s_word)
@@ -292,8 +292,8 @@ class Similarity():
             if target_word == word:
                 continue
 
+#            cs = self.cosine_measure(word_vec, self.vocabulary[target_word]['word_vector'])
             cs = pw.cosine_similarity(word_vec.reshape(1,-1), self.vocabulary[target_word]['word_vector'].reshape(1,-1))
-
             #< Set highest values
             if cs > top[0][0]:
                 top[0][0:] = cs, target_word
@@ -330,6 +330,11 @@ class DataOptions():
 
     #z Save curretly loaded data
     def save(self, save_name, vocabulary, documents, data_info):
+        
+        self.vocabulary = vocabulary
+        self.documents = documents
+        self.data_info = data_info
+        
         try:
             file = '/home/usr1/git/dist_data/d_data/{0}.npz'.format(save_name)
             data_info['name'] = save_name
@@ -369,19 +374,20 @@ class DataOptions():
 
     def info(self, arg_w = False):
         if arg_w == False:
-            
-            print('Data info')
+            print('Data info:')
             print('Name: {0}'.format(self.data_info['name']))
             print('Weighting scheme: {0}'.format(self.data_info['weights']))
             print('Context type: {0}'.format(self.data_info['context']))
-            print('Context window size: {0}\n'.format(self.data_info['window']))
+            print('Context window size: {0}'.format(self.data_info['window']))
+            print('Unique words: {0}'.format(sum([self.documents[x]['unique_words'] for x in self.documents])))
+            print('Total words: {0}\n'.format(sum([self.documents[x]['words'] for x in self.documents])))
             
-            print('Document info')
+            print('Document info:')
             for doc_info in self.documents:
                 print(doc_info)
                 print('Unique words: {0}'.format(self.documents[doc_info]['unique_words']))
                 print('Total words: {0}\n'.format(self.documents[doc_info]['words']))
-                
+            
         else:
             arg = stem(arg_w)
             if arg not in self.vocabulary.keys():
