@@ -4,6 +4,8 @@ Created on Mon Oct 17 22:21:38 2016
 
 @author: Adam Ek
 
+TODO: Stemming, when/where!?!?!??!?!?!?!
+
 """
 
 import numpy as np
@@ -15,52 +17,100 @@ import sklearn.metrics.pairwise as pw
 from stemming.porter2 import stem #ENGLISH
 
 
-class RandomIndexing():
+class DataReader():
     """
-    create_vectors = True
-        input: .txt file
-        output:
-            success rate,
-            [sentences],
-            { vocabulary: word: {word_vector, random_vector, word_count}, documents: name: {words, unique_words}, data_info: None }
+    input: .txt file
+    output:
+        doc_data: {filename: [all sentences]}
 
-    create_vectors = False
-        input: .txt file
-        output: success_rate, [sentences]
+        include: word: word_count ???
 
     """
     def __init__(self):
-        #< word: word vector, random vector, word counts
-        self.vocabulary = defaultdict(dict)
-        #< document: word counts
+        self.doc_data = defaultdict(list)
+        self.vocabulary = []
         self.documents = defaultdict(dict)
-        #< data info
-        self.data_info = defaultdict(dict)
-        self.current_doc = ''
+        self.current_doc = ""
+
+    def sentencizer(self, line):
+        start_sent = 0
+        sentences = []
+
+        for i, symbol in enumerate(line):
+            if symbol.isupper():
+                start_sent = i
+
+            if i+2 >= len(line):
+                sentences.append(line[start_sent:-1].lower().split())
+                break
+
+            elif symbol == '.' or symbol == '?' or symbol == '!':
+                if line[i+2].isupper():
+                    sentences.append(line[start_sent:i].lower().split())
+
+        return(sentences)
+
+    def word_formatter(self, word):
+        #< word: self-preservation => selfpreservation
+        #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
+
+        #< remove special things inside words
+        word = re.sub('[^a-zåäö0-9%]', '', word)
+
+        #< stem and replace word
+        word = stem(word)
+
+        #< dont add null words
+        if word == '':
+            return ''
+
+        #< FINE TUNE DATA
+        #< change numbers to NUM
+        if word.isdigit():
+            word = 'NUM'
+        #< 12% etc => PERC
+        elif '%' in word:
+            word = 'PERC'
+
+        return word
 
     #< By default create vectors from data
-    def process_data(self, filenames, create_vectors = True):
+    def preprocess_data(self, filenames, read_only = False):
         print('Processing data...')
         success_rate = [0,0]
-        sentences = []
+        sentences_collection = []
+
         for filename in filenames:
             success_rate[1] += 1
             try:
-                with open(filename) as training:
+                with open(filename) as datafile:
                     print('Reading file {0}...'.format(filename))
-                    filen = re.search('(\w*).txt', filename)
-                    self.documents[filen.group(0)] = {'words': 0, 'unique_words': 0 }
-                    self.current_doc = filen.group(0)
-                    for row in training:
-                         #< separate row into sentences
-                         row = row.strip().split('. ')
-                         for sentence in row:
-                            sentence = sentence.split()
-                            #< format sentence
-                            formatted_sentence = [w.strip().lower() for w in sentence]
-                            if formatted_sentence:
-                                formatted_sentence = self.sentence_formatter(formatted_sentence, create_vectors)
-                                sentences.append(formatted_sentence)
+                    filen = re.search('(\/+.+\/)(.*.txt)', filename)
+                    self.current_doc = filen.group(2)
+                    self.documents[filen.group(2)] = defaultdict(int)
+
+                    for line in datafile:
+                        #< separate row into sentences
+                        sentences = self.sentencizer(line)
+                        for sentence in sentences:
+                            if sentence:
+                                formatted_sentence = []
+                                for word in sentence:
+                                    word = self.word_formatter(word)
+                                    if word:
+                                        formatted_sentence.append(word)
+
+                                    if read_only:
+                                        continue
+                                    else:
+                                        if word not in self.vocabulary:
+                                            self.vocabulary.append(word)
+                                            self.documents[self.current_doc][word] = 1
+                                        else:
+                                            #< update word count in document
+                                            self.documents[self.current_doc][word] +=1
+
+                                sentences_collection.append(formatted_sentence)
                     #< Print message to user
                     success_rate[0] += 1
                     print('Success!\n')
@@ -68,65 +118,30 @@ class RandomIndexing():
             except FileNotFoundError as fnfe:
                 print('FILE ERROR!\n {0}\n'.format(fnfe))
                 continue
-            
-        if create_vectors:
-            data = {'vocabulary': self.vocabulary, 'documents': self.documents, 'data_info': None}
-            return sentences, data
+
+        if read_only:
+            return sentences_collection
         else:
-            return sentences, None
+            return sentences_collection, self.vocabulary, self.documents
 
 
-    def sentence_formatter(self, sentence, vectorize):
-        upd_sentence = []
+class RandomIndexer():
+    """
+    List of words only
+    """
+    def __init__(self):
+        #< word: word vector, random vector, word counts
+        self.vocabulary = defaultdict(dict)
 
-        for i, word in enumerate(sentence):
-            #< word: self-preservation => selfpreservation
-            #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
+    def vocabulary_vectorizer(self, word_list):
 
-            #< remove special things inside words
-            word = re.sub('[^a-zåäö0-9%]', '', word)
+        for word in word_list:
+            self.vocabulary[word]['word_vector'] = np.zeros(1024)
+            self.vocabulary[word]['random_vector'] = self.ri_vector()
 
-            #< stem and replace word
-            word = stem(word)
+        return self.vocabulary
 
-            #< dont add null words
-            if word == '':
-                continue
-
-            #< FINE TUNE DATA
-            #< change numbers to NUM
-            if word.isdigit():
-                word = 'NUM'
-            #< 12% etc => PERC
-            elif '%' in word:
-                word = 'PERC'
-
-            upd_sentence.append(word)
-            
-            if vectorize:
-                self.documents[self.current_doc]['words'] += 1                
-                
-                #< set up random_vectors
-                if word not in self.vocabulary.keys():
-                    self.vocabulary[word]['word_vector'] = np.zeros(1024)
-                    self.vocabulary[word]['random_vector'] = self.random_vector()
-                    self.vocabulary[word]['word_count'] = [0]*len(self.documents)
-                    self.vocabulary[word]['word_count'][-1] = 1
-                    
-                    self.documents[self.current_doc]['unique_words'] += 1
-
-                else:
-                    #< expand document word_count list if necessary
-                    if len(self.vocabulary[word]['word_count']) != len(self.documents):
-                        for i in range(0, (len(self.documents)-len(self.vocabulary[word]['word_count']))):
-                            self.vocabulary[word]['word_count'].append(0)
-
-                    #< update document word count
-                    self.vocabulary[word]['word_count'][-1] +=1
-
-        return upd_sentence
-
-    def random_vector(self):
+    def ri_vector(self):
         arr = np.zeros(1024)
 
         #< distribute (+1)'s and (-1)'s at random indices
@@ -142,30 +157,41 @@ class RandomIndexing():
 #< apply weights to vectors
 class Weighter():
     """
-    class init: 
-        scheme (of no consequence atm)    
+    class init:
+        scheme (of no consequence atm)
         wc_doc = [word count in doc_n]
-    
+            ex: doc1: 200 words, doc2: 300 words, doc3: 301 words => [200, 300, 301]
+
     weight:
         input:
-            vector,
-            [word_count in doc_n, ...],
+            vector, [word_count in doc_n, ...]
+                ex: wordcount in doc1: 0, doc2: 20, doc3:0 => [0, 20, 0]
         output:
-            random_vector
+            vector
     """
-    def __init__(self, scheme, wc_doc):
+    def __init__(self, scheme, document_count):
         self.scheme = scheme
-        self.wc_doc = wc_doc
+        self.document_count = document_count
+        self.documents_n = len(document_count)
 #        self.schemes = {'tf-idf': sum(x)/len(d) * math.log(sum(d)/len([z for z in x if z != 0]))}
 
-    def weight(self, random_vector, count, docs):
-        
+    def weight(self, word, random_vector):
+
         #calculate tf and idf
-        tf = sum([1 + math.log10(x/y) for x, y in zip(count, self.wc_doc) if x != 0])
-        idf = math.log10(len(self.wc_doc)/len([x for x in count if x != 0]))
-                
+        tf = []
+        df = 0
+        for doc in self.document_count:
+            if word in self.document_count[doc]:
+                df += 1
+                tf.append(1 + math.log10(self.document_count[doc][word]/sum(self.document_count[doc].values())))
+
+
+#        tf = sum([1 + math.log10(x/y) for x, y in zip(count, self.wc_doc) if x != 0])
+#        idf = math.log10(len(self.wc_doc)/len([x for x in count if x != 0]))
+
         #< return vector * tf-idf
-        return random_vector * (tf * idf)
+        tf_idf = (sum(tf) * math.log10(self.documents_n/df))
+        return random_vector * tf_idf
 
 
 
@@ -239,11 +265,11 @@ class Contexts():
 class Similarity():
     """
     class init: vocabulary: word: 'word_vector': vector
-    
+
     command: sim word1 word2
     input: word1, word2
     output: cosine similarity between word1 and word2
-    
+
     command: top word
     input: word
     output: top 5 similar words
@@ -265,16 +291,16 @@ class Similarity():
             i_word2 = self.vocabulary[word2]['word_vector']
 
         return self.cosine_measure(i_word1, i_word2)
-        
+
     #< Dot product
     def dot(self, vector1, vector2):
         return sum(map(lambda x: x[0] * x[1], zip(vector1, vector2)))
-    
+
     #< Cosine similarity
-    def cosine_measure(self, vector1, vector2):        
+    def cosine_measure(self, vector1, vector2):
         vec1 = math.sqrt(self.dot(vector1, vector1))
         vec2 = math.sqrt(self.dot(vector2, vector2))
-        
+
         return self.dot(vector1, vector2) / (vec1 * vec2)
 
     def top(self, s_word):
@@ -312,13 +338,13 @@ class Similarity():
 class DataOptions():
     """
     command: save filename
-    input: filename    
+    input: filename
     output: filename.npz
-    
+
     command: load filename
     input: filename
     output: vocabulary: defaultdict(dict), defaultdict(dict), defaultdict(dict)
-    
+
     command: info
     input: optional(word)
     output: info about data or word if supplied
@@ -330,11 +356,11 @@ class DataOptions():
 
     #z Save curretly loaded data
     def save(self, save_name, vocabulary, documents, data_info):
-        
+
         self.vocabulary = vocabulary
         self.documents = documents
         self.data_info = data_info
-        
+
         try:
             file = '/home/usr1/git/dist_data/d_data/{0}.npz'.format(save_name)
             data_info['name'] = save_name
@@ -345,7 +371,7 @@ class DataOptions():
         except Exception as e:
             print(e)
 
-    #< Load a saved datafile 
+    #< Load a saved datafile
     def load(self, load_name):
         data = np.load('/home/usr1/git/dist_data/d_data/{0}.npz'.format(load_name))
 
@@ -354,13 +380,13 @@ class DataOptions():
         for vocab_item in vocab_npdata:
             for defaultd in vocab_item:
                 self.vocabulary = defaultd
-                
+
         doc_npdata = data['documents']
         doc_npdata.resize(1,1)
         for doc_item in doc_npdata:
             for defaultd in doc_item:
                 self.documents = defaultd
-                
+
         data_npdata = data['data_info']
         data_npdata.resize(1,1)
         for data_item in data_npdata:
@@ -381,13 +407,12 @@ class DataOptions():
             print('Context window size: {0}'.format(self.data_info['window']))
             print('Unique words: {0}'.format(sum([self.documents[x]['unique_words'] for x in self.documents])))
             print('Total words: {0}\n'.format(sum([self.documents[x]['words'] for x in self.documents])))
-            
+
             print('Document info:')
             for doc_info in self.documents:
                 print(doc_info)
-                print('Unique words: {0}'.format(self.documents[doc_info]['unique_words']))
                 print('Total words: {0}\n'.format(self.documents[doc_info]['words']))
-            
+
         else:
             arg = stem(arg_w)
             if arg not in self.vocabulary.keys():
@@ -395,16 +420,14 @@ class DataOptions():
             else:
                 word_data = self.vocabulary[arg]
                 print('"{0}" stemmed to "{1}"\n'.format(arg_w, arg))
-
                 print('{0} occurences in {1} documents'.format(sum(word_data['word_count']), len([x for x in word_data['word_count'] if x != 0])))
 
 class Extender():
     def extender(item, count, elements = 0):
         pass
-        
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
