@@ -4,8 +4,16 @@ Created on Mon Oct 17 22:21:38 2016
 
 @author: Adam Ek
 
-TODO: Stemming, when/where!?!?!??!?!?!?!
+TODO: fix descriptions
+"""
 
+"""
+PARAMS:
+    P:
+INPUT:
+    N:
+OUTPUT:
+    I:
 """
 
 import numpy as np
@@ -18,64 +26,24 @@ from stemming.porter2 import stem #ENGLISH
 
 
 class DataReader():
-    """
-    input: .txt file
-    output:
-        doc_data: {filename: [all sentences]}
 
-        include: word: word_count ???
-
-    """
     def __init__(self):
         self.doc_data = defaultdict(list)
         self.vocabulary = []
         self.documents = defaultdict(dict)
         self.current_doc = ""
 
-    def sentencizer(self, line):
-        start_sent = 0
-        sentences = []
-
-        for i, symbol in enumerate(line):
-            if symbol.isupper():
-                start_sent = i
-
-            if i+2 >= len(line):
-                sentences.append(line[start_sent:-1].lower().split())
-                break
-
-            elif symbol == '.' or symbol == '?' or symbol == '!':
-                if line[i+2].isupper():
-                    sentences.append(line[start_sent:i].lower().split())
-
-        return(sentences)
-
-    def word_formatter(self, word):
-        #< word: self-preservation => selfpreservation
-        #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
-
-        #< remove special things inside words
-        word = re.sub('[^a-zåäö0-9%]', '', word)
-
-        #< stem and replace word
-        word = stem(word)
-
-        #< dont add null words
-        if word == '':
-            return ''
-
-        #< FINE TUNE DATA
-        #< change numbers to NUM
-        if word.isdigit():
-            word = 'NUM'
-        #< 12% etc => PERC
-        elif '%' in word:
-            word = 'PERC'
-
-        return word
 
     #< By default create vectors from data
-    def preprocess_data(self, filenames, read_only = False):
+    def preprocess_data(self, filenames, numerize = False, read_only = False):
+        """
+        PARAMS:
+            P:
+        INPUT:
+            N:
+        OUTPUT:
+            I:
+        """
         print('Processing data...')
         success_rate = [0,0]
         sentences_collection = []
@@ -125,16 +93,63 @@ class DataReader():
             return sentences_collection, self.vocabulary, self.documents
 
 
+    def sentencizer(self, line):
+        start_sent = 0
+        sentences = []
+
+        for i, symbol in enumerate(line):
+            if symbol.isupper():
+                start_sent = i
+
+            if i+2 >= len(line):
+                sentences.append(line[start_sent:-1].lower().split())
+                break
+
+            elif symbol == '.' or symbol == '?' or symbol == '!':
+                if line[i+2].isupper():
+                    sentences.append(line[start_sent:i].lower().split())
+
+        return(sentences)
+
+    def word_formatter(self, word):
+        #< word: self-preservation => selfpreservation
+        #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
+
+        #< remove special things inside words
+        word = re.sub('[^a-zåäö0-9%]', '', word)
+
+        #< stem and replace word
+        word = stem(word)
+
+        #< dont add null words
+        if word == '':
+            return ''
+
+        #< FINE TUNE DATA
+        #< change numbers to NUM
+        if word.isdigit():
+            word = 'NUM'
+        #< 12% etc => PERC
+        elif '%' in word:
+            word = 'PERC'
+
+        return word
+
+
 class RandomIndexer():
-    """
-    List of words only
-    """
     def __init__(self):
         #< word: word vector, random vector, word counts
         self.vocabulary = defaultdict(dict)
 
     def vocabulary_vectorizer(self, word_list):
-
+        """
+        PARAMS:
+            P:
+        INPUT:
+            N:
+        OUTPUT:
+            I:
+        """
         for word in word_list:
             self.vocabulary[word]['word_vector'] = np.zeros(1024)
             self.vocabulary[word]['random_vector'] = self.ri_vector()
@@ -156,19 +171,6 @@ class RandomIndexer():
 
 #< apply weights to vectors
 class Weighter():
-    """
-    class init:
-        scheme (of no consequence atm)
-        wc_doc = [word count in doc_n]
-            ex: doc1: 200 words, doc2: 300 words, doc3: 301 words => [200, 300, 301]
-
-    weight:
-        input:
-            vector, [word_count in doc_n, ...]
-                ex: wordcount in doc1: 0, doc2: 20, doc3:0 => [0, 20, 0]
-        output:
-            vector
-    """
     def __init__(self, scheme, document_count):
         self.scheme = scheme
         self.document_count = document_count
@@ -176,7 +178,14 @@ class Weighter():
 #        self.schemes = {'tf-idf': sum(x)/len(d) * math.log(sum(d)/len([z for z in x if z != 0]))}
 
     def weight(self, word, random_vector):
-
+        """
+        PARAMS:
+            P:
+        INPUT:
+            N:
+        OUTPUT:
+            I:
+        """
         #calculate tf and idf
         tf = []
         df = 0
@@ -185,10 +194,6 @@ class Weighter():
                 df += 1
                 tf.append(1 + math.log10(self.document_count[doc][word]/sum(self.document_count[doc].values())))
 
-
-#        tf = sum([1 + math.log10(x/y) for x, y in zip(count, self.wc_doc) if x != 0])
-#        idf = math.log10(len(self.wc_doc)/len([x for x in count if x != 0]))
-
         #< return vector * tf-idf
         tf_idf = (sum(tf) * math.log10(self.documents_n/df))
         return random_vector * tf_idf
@@ -196,16 +201,6 @@ class Weighter():
 
 
 class Contexts():
-    """
-    input:
-        data: vocabulary: word: {word_vector, random_vector, (word_counts)}
-        context: CBOW or skipgram
-        window: integer
-
-    output:
-        vocabulary: word: {word_vector, random_vector, (word_counts)},
-        data_info: {name, context, window, weights}
-    """
     def __init__(self, vocabulary, context, window):
         self.vocabulary = vocabulary
 
@@ -216,13 +211,18 @@ class Contexts():
         else:
             self.context = 'CBOW'
 
-    """
-    input: list of sentences
-    output: vocabulary, data_info
-    """
-    def read_data(self, sentences, update = False):
-        print('Reading sentences...\n')
 
+    def read_data(self, sentences, update = False):
+        """
+        PARAMS:
+            P:
+        INPUT:
+            N:
+        OUTPUT:
+            I:
+        """
+
+        print('Reading sentences...\n')
         #< read all sentences
         for sentence in sentences:
             self.read_contexts(sentence)
@@ -264,18 +264,16 @@ class Contexts():
 
 class Similarity():
     """
-    class init: vocabulary: word: 'word_vector': vector
-
-    command: sim word1 word2
-    input: word1, word2
-    output: cosine similarity between word1 and word2
-
-    command: top word
-    input: word
-    output: top 5 similar words
+    PARAMS:
+        P:
+    INPUT:
+        N:
+    OUTPUT:
+        I:
     """
     def __init__(self, vocabulary):
         self.vocabulary = vocabulary
+
 
     def cosine_similarity(self, s_word1, s_word2):
         #< stem input
@@ -397,7 +395,7 @@ class DataOptions():
 
         return {'vocabulary': self.vocabulary, 'documents': self.documents, 'data_info': self.data_info}
 
-
+    # !!! NEEDS FIX
     def info(self, arg_w = False):
         if arg_w == False:
             print('Data info:')
