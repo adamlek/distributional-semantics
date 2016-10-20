@@ -31,16 +31,15 @@ Class5: Data operations
 
 """
 from randomindexer import DataReader
-from randomindexer import RandomIndexer
+from randomindexer import WSModel
 from randomindexer import Weighter
-from randomindexer import Contexts
+from randomindexer import Contexter
 from randomindexer import Similarity
 from randomindexer import DataOptions
 
 import sys
 
 def main():
-    ri = RandomIndexing()
     dt = DataOptions()
 
     print('Welcome to Distributial Semantics with Random Indexing\n')
@@ -63,7 +62,7 @@ def main():
         elif setup[0] == 'load':
             if not new_data:
                 try:
-                    dist_data = dt.load(setup[1])
+                    vector_vocabulary, documents, data_info = dt.load(setup[1])
                     break
                 except Exception as e:
                     print('Try again\n', e)
@@ -72,10 +71,10 @@ def main():
         elif setup[0] == 'new':
             new_data = True
             dr = DataReader()
-            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
-#            sentences, dist_data = ri.process_data(['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_2.txt'])
-            ri = RandomIndexer()
-            vector_vocabulary = ri.vocabulary_vectorizer(vocabulary)
+#            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
+            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_3.txt']) #, '/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/austen-emma.txt']
+            wsm = WSModel()
+            vector_vocabulary = wsm.vocabulary_vectorizer(vocabulary)
 
         #< apply precessed data
         elif setup[0] == 'apply':
@@ -84,11 +83,11 @@ def main():
                 wgt = Weighter('tf-idf', documents)
 
                 for x in vector_vocabulary:
-                    vector_vocabulary[x]['random_vector'], tf_idf = wgt.weight(x, vector_vocabulary[x]['random_vector'])
+                    vector_vocabulary[x]['random_vector'] = wgt.weight(x, vector_vocabulary[x]['random_vector'])
 
-                rc = Contexts(vector_vocabulary, settings[0], settings[1])
-                vector_vocabulary, data_info = rc.read_data(sentences)
-                dt = DataOptions(vocabulary, documents, data_info)
+                rc = Contexter(vector_vocabulary, settings[0], settings[1])
+                vector_vocabulary, data_info = rc.process_data(sentences)
+                dt = DataOptions(vector_vocabulary, documents, data_info)
                 break
             else:
                 print('Invalid command')
@@ -154,11 +153,16 @@ def main():
         #< save data
         elif input_args[0] == 'save':
             try:
-                print(dt.save(input_args[1], dist_data['vocabulary'], dist_data['documents'], dist_data['data_info']))
+                print(dt.save(input_args[1], vector_vocabulary, documents, data_info))
             except Exception as e:
                 print('Error\n{0}'.format(e))
 
         #< update data
+# 1. provide new texts => get updated vocabulary, updated document_lists
+# 2. Make new vectors
+# 3. make new Weigther() with old_documents + new
+# 4. read the new sentences with vector addition
+# 5.
 #        elif input_args[0] == 'update':
 #            try:
 #                new_data = ri.process_data(input_args[1:])
