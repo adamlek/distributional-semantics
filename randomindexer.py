@@ -5,7 +5,7 @@ Created on Mon Oct 17 22:21:38 2016
 @author: Adam Ek
 
 TODO: fix descriptions
-TODO: name change top WordSpaceModeller.py
+TODO: name change to WordSpaceModeller.py
 """
 
 """
@@ -116,9 +116,19 @@ class DataReader():
         return sentences
 
     #< Format words
-    #< word: self-preservation => selfpreservation
+    #< word: self-preservation => selfpreservation ??? self preservation
     #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
     def word_formatter(self, word):
+
+        #TODO: !!! !!! !!! Does it even work properly? Needs testing!
+        #TODO: ??? !!! ??? c1:[bla, selfpreservation, bla], c2:[bla, self, preservation, bla]
+        if '-' in word:
+            words = word.split('-')
+            for word in words[:-1]:
+                self.word_formatter(word)
+
+            word = words[-1]
+            continue #?
 
         #< remove special things inside words
         word = re.sub('[^a-zåäö0-9%]', '', word)
@@ -141,9 +151,8 @@ class DataReader():
         return word
 
 
-class WSModel():
-    def __init__(self, dimensions = 1024, random_elements = 6, ri_model = True):
-        self.ri_model = ri_model
+class RandomVectorizer():
+    def __init__(self, dimensions = 1024, random_elements = 6):
         self.dimensions = dimensions
         self.random_elements = random_elements
         self.vocabulary = defaultdict(dict)
@@ -159,8 +168,7 @@ class WSModel():
         """
         for word in word_list:
             self.vocabulary[word]['word_vector'] = np.zeros(self.dimensions)
-            if self.ri_model:
-                self.vocabulary[word]['random_vector'] = self.random_vector()
+            self.vocabulary[word]['random_vector'] = self.random_vector()
 
         return self.vocabulary
 
@@ -238,6 +246,7 @@ class Contexter():
         for sentence in sentences:
             self.read_contexts(sentence)
 
+        #< needs updating :P :P :P
         #< when updating with new data, re-do all previous vector additions
         if update:
             self.update_contexts()
@@ -250,11 +259,9 @@ class Contexter():
     def read_contexts(self, sentence):
         for i, word in enumerate(sentence):
             context = []
-            #TODO !!! words before index, fix skip-gram(???)
             if (i-n-self.context_types[self.context]) >= 0 or i != 0:
                 context += sentence[i-n-self.context_types[self.context]:i-1] #words before
 
-            #TODO !!! words after index, fix skip-gram(???)
             if (i+n+self.context_types[self.context]) <= len(sentence):
                 context += sentence[i:i+n+self.context_types[self.context]] #words after
 
@@ -311,7 +318,6 @@ class Similarity():
         return cos_sim[0][0] #self.cosine_measure(i_word1, i_word2)
 
     #< Dot product
-    #TODO !!! Add to cosine_measure
     def dot_product(self, vector1, vector2):
         return sum(map(lambda x: x[0] * x[1], zip(vector1, vector2)))
 
@@ -323,6 +329,7 @@ class Similarity():
 
         return dot_prod / (vec1 * vec2)
 
+    #TODO: Maybe make prittier somehow?
     def top_similarity(self, s_word):
         word = stem(s_word)
 
