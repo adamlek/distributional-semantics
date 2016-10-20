@@ -259,6 +259,7 @@ class Contexter():
     def read_contexts(self, sentence):
         for i, word in enumerate(sentence):
             context = []
+            #< tries to take WHOLE contexts if window > 1, fix? take lowest possible window then?
             if (i-n-self.context_types[self.context]) >= 0 or i != 0:
                 context += sentence[i-n-self.context_types[self.context]:i-1] #words before
 
