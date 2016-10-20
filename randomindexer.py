@@ -122,13 +122,12 @@ class DataReader():
 
         #TODO: !!! !!! !!! Does it even work properly? Needs testing!
         #TODO: ??? !!! ??? c1:[bla, selfpreservation, bla], c2:[bla, self, preservation, bla]
-        if '-' in word:
-            words = word.split('-')
-            for word in words[:-1]:
-                self.word_formatter(word)
-
-            word = words[-1]
-            continue #?
+#        if '-' in word:
+#            words = word.split('-')
+#            for word in words[:-1]:
+#                self.word_formatter(word)
+#
+#            word = words[-1]
 
         #< remove special things inside words
         word = re.sub('[^a-zåäö0-9%]', '', word)
@@ -217,13 +216,10 @@ class Weighter():
 #< vocabulary = dictionary of words with word_vector and random_vector
 #< context = 'CBOW' or 'skipgram', window = window size (default = 1)
 class Contexter():
-    def __init__(self, vocabulary, context = 'CBOW', window = 1):
+    def __init__(self, vocabulary, context = 'CBOW', window = 2):
         self.vocabulary = vocabulary
 
-        if window <= 5:
-            self.window = window
-        else:
-            window = 5
+        self.window = window
 
         self.context_types = {'CBOW': 0, 'skipgram': 1}
         if context in self.context_types.keys():
@@ -257,14 +253,18 @@ class Contexter():
                                   'weights': 'tf-idf'}
 
     def read_contexts(self, sentence):
+        print(sentence)
         for i, word in enumerate(sentence):
+            print(word)
             context = []
             #< tries to take WHOLE contexts if window > 1, fix? take lowest possible window then?
-            if (i-n-self.context_types[self.context]) >= 0 or i != 0:
-                context += sentence[i-n-self.context_types[self.context]:i-1] #words before
+            if (i-self.window-self.context_types[self.context]) >= 0:
+                print(sentence[i-self.window-self.context_types[self.context]:i], 'before') #< !!!
+                context += sentence[i-self.window-self.context_types[self.context]:i] #words before
 
-            if (i+n+self.context_types[self.context]) <= len(sentence):
-                context += sentence[i:i+n+self.context_types[self.context]] #words after
+            if (i+self.window+self.context_types[self.context]) <= len(sentence):
+                print(sentence[i+1:i+1+self.window+self.context_types[self.context]], 'after')
+                context += sentence[i:i+self.window+self.context_types[self.context]] #words after
 
             if context:
                 for context_word in context:
