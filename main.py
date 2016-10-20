@@ -31,7 +31,7 @@ Class5: Data operations
 
 """
 from randomindexer import DataReader
-from randomindexer import WSModel
+from randomindexer import RandomVectorizer
 from randomindexer import Weighter
 from randomindexer import Contexter
 from randomindexer import Similarity
@@ -44,7 +44,7 @@ def main():
 
     print('Welcome to Distributial Semantics with Random Indexing\n')
     new_data = False
-    settings = ['CBOW', 1]
+    settings = []
     #< init data
     while True:
         if new_data:
@@ -72,7 +72,7 @@ def main():
             new_data = True
             dr = DataReader()
 #            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
-            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_3.txt']) #, '/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/austen-emma.txt']
+            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_3.txt'])#, '/home/usr1/git/dist_data/test_doc_2.txt'])#, '/home/usr1/git/dist_data/austen-emma.txt'])
             rv = RandomVectorizer()
             vector_vocabulary = rv.vocabulary_vectorizer(vocabulary)
 
@@ -85,7 +85,7 @@ def main():
                 for x in vector_vocabulary:
                     vector_vocabulary[x]['random_vector'] = wgt.weight(x, vector_vocabulary[x]['random_vector'])
 
-                rc = Contexter(vector_vocabulary, settings[0], settings[1])
+                rc = Contexter(vector_vocabulary)
                 vector_vocabulary, data_info = rc.process_data(sentences)
                 dt = DataOptions(vector_vocabulary, documents, data_info)
                 break
@@ -94,6 +94,7 @@ def main():
 
 #        #< change settings before data is applied with command "apply"
         elif setup[0] == 'set':
+            
             if setup[1] == 'context':
                 settings[0] = setup[2]
             elif setup[1] == 'window':
@@ -134,7 +135,7 @@ def main():
 
         elif input_args[0] == 'top':
             try:
-                top_res = sim.top(input_args[1].lower())
+                top_res = sim.top_similarity(input_args[1].lower())
                 if top_res == str(top_res):
                     print(top_res)
                 else:
