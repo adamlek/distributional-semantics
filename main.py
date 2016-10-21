@@ -71,11 +71,11 @@ def main():
         elif setup[0] == 'new':
             new_data = True
             dr = DataReader()
-#            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
-            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_2.txt'])#, '/home/usr1/git/dist_data/austen-emma.txt'])
+#            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
+#            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_5.txt'])#, '/home/usr1/git/dist_data/test_doc_2.txt'])#, '/home/usr1/git/dist_data/austen-emma.txt']) 
+            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_5.txt', ])            
             rv = RandomVectorizer()
             vector_vocabulary = rv.vocabulary_vectorizer(vocabulary)
-
         #< apply precessed data
         elif setup[0] == 'apply':
             if new_data:
