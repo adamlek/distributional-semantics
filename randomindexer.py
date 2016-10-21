@@ -67,18 +67,18 @@ class DataReader():
                             if sentence:
                                 formatted_sentence = []
                                 for word in sentence:
-                                    word = self.word_formatter(word)
+                                    word = self.word_formatter(word.lower())
                                     if word:
                                         formatted_sentence.append(word)
 
+                                    #< don't output vocab/data_info
                                     if read_only:
                                         continue
-                                    else: #TODO !!! Make prittier? maybe vocab as a set?
+                                    else: #< update word counts in document
                                         if word not in self.vocabulary:
                                             self.vocabulary.append(word)
                                             self.documents[self.current_doc][word] = 1
                                         else:
-                                            #< update word count in document
                                             self.documents[self.current_doc][word] +=1
 
                                 sentences_collection.append(formatted_sentence)
@@ -95,7 +95,6 @@ class DataReader():
 
 
     #< Create sentences from a line in a document
-    #< "U.S.A. is blaaaa"
     def sentencizer(self, line):
         start_sent = 0
         sentences = []
@@ -106,12 +105,12 @@ class DataReader():
                     start_sent = i
 
             if i+2 >= len(line):
-                sentences.append(line[start_sent:-1].lower().split())
+                sentences.append(line[start_sent:-1].split())
                 break
 
             elif symbol == '.' or symbol == '?' or symbol == '!':
                 if line[i+2].isupper():
-                    sentences.append(line[start_sent:i].lower().split())
+                    sentences.append(line[start_sent:i].split())
 
         return sentences
 
@@ -158,8 +157,6 @@ class RandomVectorizer():
 
     def vocabulary_vectorizer(self, word_list):
         """
-        TODO: ???!!!!!! output format, only give random_vector if ri_model (create word_vectors at sentence reading)
-
         INPUT:
             List of words
         OUTPUT:
@@ -216,9 +213,10 @@ class Weighter():
 #< vocabulary = dictionary of words with word_vector and random_vector
 #< context = 'CBOW' or 'skipgram', window = window size (default = 1)
 class Contexter():
-    def __init__(self, vocabulary, context = 'CBOW', window = 2):
-        self.vocabulary = vocabulary
+    def __init__(self, vocabulary, context = 'CBOW', window = 1, sentences = True, wordvector_only = True):
 
+
+        self.vocabulary = vocabulary
         self.window = window
 
         self.context_types = {'CBOW': 0, 'skipgram': 1}
@@ -226,6 +224,11 @@ class Contexter():
             self.context = context
         else:
             self.context = 'CBOW'
+
+        #< params
+        self.sentences = sentences
+        self.wordvector_only = wordvector_only
+        self.history = []
 
 
     def process_data(self, sentences, update = False):
@@ -247,33 +250,48 @@ class Contexter():
         if update:
             self.update_contexts()
 
-        return self.vocabulary, {'name': 'Temporary data',
-                                  'context': self.context,
-                                  'window': self.window,
-                                  'weights': 'tf-idf'}
 
+        if self.wordvector_only:
+            return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary},
+            {'name': 'Temporary data',
+             'context': self.context,
+             'window': self.window,
+             'weights': 'tf-idf'}
+
+        else:
+            return self.vocabulary, {'name': 'Temporary data',
+                                     'context': self.context,
+                                     'window': self.window,
+                                     'weights': 'tf-idf'}
+
+
+    #TODO: handle reading continous text, i.e. when sentences = False
     def read_contexts(self, sentence):
-        print(sentence)
         for i, word in enumerate(sentence):
-            print(word)
             context = []
-            #< tries to take WHOLE contexts if window > 1, fix? take lowest possible window then?
-            if (i-self.window-self.context_types[self.context]) >= 0:
-                print(sentence[i-self.window-self.context_types[self.context]:i], 'before') #< !!!
-                context += sentence[i-self.window-self.context_types[self.context]:i] #words before
 
-            if (i+self.window+self.context_types[self.context]) <= len(sentence):
-                print(sentence[i+1:i+1+self.window+self.context_types[self.context]], 'after')
-                context += sentence[i:i+self.window+self.context_types[self.context]] #words after
+            #TODO: check skip-gram
+            #< words before
+            if (i-self.window-self.context_types[self.context]) <= 0:
+                context += sentence[:i]
+            else:
+                context += sentence[i-self.window-self.context_types[self.context]:i]
 
+            #< words after
+            if (i+self.window+self.context_types[self.context]) > len(sentence):
+                context += sentence[i+1:]
+            else:
+                context += sentence[i+1:i+1+self.window+self.context_types[self.context]]
+
+            #< add vectors in context
             if context:
                 for context_word in context:
                     self.vector_addition(word, context_word)
 
-    #TODO: Add history
     def vector_addition(self, word, target_word):
         if word in self.vocabulary.keys() and target_word in self.vocabulary.keys():
             self.vocabulary[word]['word_vector'] += self.vocabulary[target_word]['random_vector']
+            self.history.append((word, target_word))
         else:
             pass
 
@@ -296,15 +314,16 @@ class Similarity():
             top 5 most cosine similar words
     """
     def __init__(self, vocabulary):
-        #TODO ??? init datatype, only take word_vectors
         self.vocabulary = vocabulary
 
+        #TODO: Fix handling of different datatypes
+        #vocab{ word: {word_vector:[]} {random_vector:[]} } VS vocab{ word: {word_vector:[]} }
 
     def cosine_similarity(self, s_word1, s_word2):
         #< stem input
 
-#TEMP        word1, word2 = stem(s_word1), stem(s_word2)
-        word1, word2 = s_word1, s_word2
+        word1, word2 = stem(s_word1), stem(s_word2)
+#DATAEXTRACTION        word1, word2 = s_word1, s_word2
 
         #< check if the words exists
         if word1 not in self.vocabulary.keys():
@@ -312,8 +331,8 @@ class Similarity():
         elif word2 not in self.vocabulary.keys():
             return '{0} does not exist, try again\n'.format(s_word2)
         else:
-            i_word1 = self.vocabulary[word1]['word_vector']
-            i_word2 = self.vocabulary[word2]['word_vector']
+            i_word1 = self.vocabulary[word1]
+            i_word2 = self.vocabulary[word2]
 
         cos_sim = pw.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
         return cos_sim[0][0] #self.cosine_measure(i_word1, i_word2)
@@ -328,6 +347,7 @@ class Similarity():
         vec1 = math.sqrt(self.dot_product(vector1, vector1))
         vec2 = math.sqrt(self.dot_product(vector2, vector2))
 
+        #TODO handle division by zero
         return dot_prod / (vec1 * vec2)
 
     #TODO: Maybe make prittier somehow?
@@ -337,7 +357,7 @@ class Similarity():
         if word not in self.vocabulary.keys():
             return '{0} does not exist, try again\n'.format(s_word)
         else:
-            word_vec = self.vocabulary[word]['word_vector']
+            word_vec = self.vocabulary[word]
 
         top = [[0, ""], [0, ""], [0, ""], [0, ""], [0, ""]]
 
@@ -347,7 +367,7 @@ class Similarity():
                 continue
 
 #            cs = self.cosine_measure(word_vec, self.vocabulary[target_word]['word_vector'])
-            cs = pw.cosine_similarity(word_vec.reshape(1,-1), self.vocabulary[target_word]['word_vector'].reshape(1,-1))
+            cs = pw.cosine_similarity(word_vec.reshape(1,-1), self.vocabulary[target_word].reshape(1,-1))
 
             #< Set highest values
             if cs > top[0][0]:
@@ -436,23 +456,23 @@ class DataOptions():
 
         return self.vocabulary, self.documents, self.data_info
 
-    #TODO add option to show documents or not
     def info(self, arg_w = False):
         if self.documents != None and self.data_info != None:
             if arg_w == False:
-                print('Data info:')
-                print('Name: {0}'.format(self.data_info['name']))
+                print('Data info: {0}'.format(self.data_info['name']))
                 print('Weighting scheme: {0}'.format(self.data_info['weights']))
                 print('Context type: {0}'.format(self.data_info['context']))
-                print('Context window size: {0}'.format(self.data_info['window']))
+                print('Context window size: {0}\n'.format(self.data_info['window']))
+
+                print('Total documents: {0}'.format(len(self.documents.keys())))
                 print('Unique words: {0}'.format(sum([len(self.documents[x].keys()) for x in self.documents])))
                 print('Total words: {0}\n'.format(sum([sum(self.documents[x].values()) for x in self.documents])))
 
-                print('Document info:')
+            elif arg_w == '-docs':
+                print('Document \t\t Unique \t Total')
                 for doc_info in self.documents:
-                    print(doc_info)
-                    print('Unique words: {0}'.format(len(self.documents[doc_info].keys())))
-                    print('Total words: {0}\n'.format(sum(self.documents[doc_info].values())))
+                    print('{0} \t {1} \t {2}'.format(doc_info, len(self.documents[doc_info].keys()), sum(self.documents[doc_info].values())))
+                print('')
 
             else:
                 arg = stem(arg_w)
@@ -461,9 +481,10 @@ class DataOptions():
                 else:
                     print('"{0}" stemmed to "{1}"\n'.format(arg_w, arg))
                     total = [0, 0]
+                    print('Document \t\t Occurences')
                     for w in self.documents:
                         if arg in self.documents[w]:
-                            print('{0}:\n {1} occurrences\n'.format(w, self.documents[w][arg]))
+                            print('{0} \t {1}'.format(w, self.documents[w][arg]))
                             total[0] += self.documents[w][arg]
                             total[1] += 1
                     print('{0} occurences in {1} documents'.format(total[0], total[1]))
