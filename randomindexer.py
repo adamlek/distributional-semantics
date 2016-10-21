@@ -39,7 +39,7 @@ class DataReader():
 
 
     #< By default create vectors from data
-    def preprocess_data(self, filenames, read_only = False, numerize = False):
+    def preprocess_data(self, filenames, numerize = False):
         """
         PARAMS:
             Numerize: NULL ATM
@@ -67,19 +67,17 @@ class DataReader():
                             if sentence:
                                 formatted_sentence = []
                                 for word in sentence:
-                                    word = self.word_formatter(word.lower())
-                                    if word:
-                                        formatted_sentence.append(word)
-
-                                    #< don't output vocab/data_info
-                                    if read_only:
+                                    
+                                    if '-' in word:
+                                        words = word.split('-')
+                                        for wordn in words:
+                                            formatted_sentence.append(self.word_formatter(wordn.lower()))
                                         continue
-                                    else: #< update word counts in document
-                                        if word not in self.vocabulary:
-                                            self.vocabulary.append(word)
-                                            self.documents[self.current_doc][word] = 1
-                                        else:
-                                            self.documents[self.current_doc][word] +=1
+                                    
+                                    formatted_sentence.append(self.word_formatter(word.lower()))
+                                    
+                                while '' in formatted_sentence:
+                                    formatted_sentence.remove('')
 
                                 sentences_collection.append(formatted_sentence)
                     print('Success!\n')
@@ -88,20 +86,21 @@ class DataReader():
                 print('FILE ERROR!\n {0}\n'.format(fnfe))
                 continue
 
-        if read_only:
-            return sentences_collection
-        else:
-            return sentences_collection, self.vocabulary, self.documents
+        return sentences_collection, self.vocabulary, self.documents
 
-
+    
     #< Create sentences from a line in a document
     def sentencizer(self, line):
         start_sent = 0
         sentences = []
 
         for i, symbol in enumerate(line):
-            if symbol.isupper():
-                if line[i+1] != '.':
+            
+            if i+1 == len(line):
+                sentences.append(line[start_sent:].split())
+                
+            elif symbol.isupper():
+                if line[i+1] != '.' and line[i+1].islower():
                     start_sent = i
 
             if i+2 >= len(line):
@@ -118,16 +117,6 @@ class DataReader():
     #< word: self-preservation => selfpreservation ??? self preservation
     #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
     def word_formatter(self, word):
-
-        #TODO: !!! !!! !!! Does it even work properly? Needs testing!
-        #TODO: ??? !!! ??? c1:[bla, selfpreservation, bla], c2:[bla, self, preservation, bla]
-#        if '-' in word:
-#            words = word.split('-')
-#            for word in words[:-1]:
-#                self.word_formatter(word)
-#
-#            word = words[-1]
-
         #< remove special things inside words
         word = re.sub('[^a-zåäö0-9%]', '', word)
 
@@ -145,6 +134,12 @@ class DataReader():
         #< 12% etc => PERC
         elif '%' in word:
             word = 'PERC'
+            
+        if word not in self.vocabulary:
+            self.vocabulary.append(word)
+            self.documents[self.current_doc][word] = 1
+        else:
+            self.documents[self.current_doc][word] +=1
 
         return word
 
@@ -213,17 +208,15 @@ class Weighter():
 #< vocabulary = dictionary of words with word_vector and random_vector
 #< context = 'CBOW' or 'skipgram', window = window size (default = 1)
 class Contexter():
-    def __init__(self, vocabulary, context = 'CBOW', window = 1, sentences = True, wordvector_only = True):
-
-
+    def __init__(self, vocabulary, contexttype = 'CBOW', window = 3, sentences = False, wordvector_only = True):
         self.vocabulary = vocabulary
         self.window = window
 
-        self.context_types = {'CBOW': 0, 'skipgram': 1}
-        if context in self.context_types.keys():
-            self.context = context
+        self.context_types = {'CBOW': 1, 'skipgram': self.window}
+        if contexttype in self.context_types:
+            self.contexttype = contexttype
         else:
-            self.context = 'CBOW'
+            self.contexttype = 'CBOW'
 
         #< params
         self.sentences = sentences
@@ -240,48 +233,66 @@ class Contexter():
             Dictionary of data_info: name: x, context: y, window: n, weights: m
         """
 
-        print('Reading sentences...\n')
+        print('Reading text...\n')
         #< read all sentences
-        for sentence in sentences:
-            self.read_contexts(sentence)
+        if self.sentences:
+            for sentence in sentences:
+                self.read_contexts(sentence)
+        # read text as one unit
+        else:
+            self.read_contexts([word for li in sentences for word in li])
 
         #< needs updating :P :P :P
         #< when updating with new data, re-do all previous vector additions
         if update:
             self.update_contexts()
-
+            #< use history
+        else:
+            pass
+            #< save history or something
 
         if self.wordvector_only:
-            return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary},
-            {'name': 'Temporary data',
-             'context': self.context,
-             'window': self.window,
-             'weights': 'tf-idf'}
-
+            return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}, {'name': 'Temporary data', 
+                                                                                    'context': self.contexttype,
+                                                                                    'window': self.window,
+                                                                                    'weights': 'tf-idf'}
         else:
             return self.vocabulary, {'name': 'Temporary data',
-                                     'context': self.context,
+                                     'context': self.contexttype,
                                      'window': self.window,
                                      'weights': 'tf-idf'}
 
-
-    #TODO: handle reading continous text, i.e. when sentences = False
-    def read_contexts(self, sentence):
-        for i, word in enumerate(sentence):
+    #TODO: CHECK SKIPGRAM, wierd cosine sim
+    def read_contexts(self, context_text):
+        for i, word in enumerate(context_text):
             context = []
-
-            #TODO: check skip-gram
-            #< words before
-            if (i-self.window-self.context_types[self.context]) <= 0:
-                context += sentence[:i]
-            else:
-                context += sentence[i-self.window-self.context_types[self.context]:i]
-
-            #< words after
-            if (i+self.window+self.context_types[self.context]) => len(sentence):
-                context += sentence[i+1:]
-            else:
-                context += sentence[i+1:i+1+self.window+self.context_types[self.context]]
+            
+            if self.contexttype == 'CBOW':
+                #words before
+                if (i-self.window) <= 0:
+                    context += context_text[:i]
+                else:
+                    context += context_text[i-self.window:i]
+    
+                #< words after
+                if (i+self.window) >= len(context_text):
+                    context += context_text[i+1:]
+                else:
+                    context += context_text[i+1:i+1+self.window]
+                    
+            elif self.contexttype == 'skipgram':
+                #word before
+                if (i-self.window-1) < 0:
+                    pass
+                else:
+                    context += context_text[i-self.window-1]
+                
+                #< words after
+                if (i+self.window+1) >= len(context_text):
+                    pass
+                else:
+                    context += context_text[i+1+self.window]
+                
 
             #< add vectors in context
             if context:
@@ -321,7 +332,6 @@ class Similarity():
 
     def cosine_similarity(self, s_word1, s_word2):
         #< stem input
-
         word1, word2 = stem(s_word1), stem(s_word2)
 #DATAEXTRACTION        word1, word2 = s_word1, s_word2
 
