@@ -278,7 +278,7 @@ class Contexter():
                 context += sentence[i-self.window-self.context_types[self.context]:i]
 
             #< words after
-            if (i+self.window+self.context_types[self.context]) > len(sentence):
+            if (i+self.window+self.context_types[self.context]) => len(sentence):
                 context += sentence[i+1:]
             else:
                 context += sentence[i+1:i+1+self.window+self.context_types[self.context]]
