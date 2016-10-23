@@ -67,15 +67,15 @@ class DataReader():
                             if sentence:
                                 formatted_sentence = []
                                 for word in sentence:
-                                    
+
                                     if '-' in word:
                                         words = word.split('-')
                                         for wordn in words:
                                             formatted_sentence.append(self.word_formatter(wordn.lower()))
                                         continue
-                                    
+
                                     formatted_sentence.append(self.word_formatter(word.lower()))
-                                    
+
                                 while '' in formatted_sentence:
                                     formatted_sentence.remove('')
 
@@ -88,17 +88,17 @@ class DataReader():
 
         return sentences_collection, self.vocabulary, self.documents
 
-    
+
     #< Create sentences from a line in a document
     def sentencizer(self, line):
         start_sent = 0
         sentences = []
 
         for i, symbol in enumerate(line):
-            
+
             if i+1 == len(line):
                 sentences.append(line[start_sent:].split())
-                
+
             elif symbol.isupper():
                 if line[i+1] != '.' and line[i+1].islower():
                     start_sent = i
@@ -134,7 +134,7 @@ class DataReader():
         #< 12% etc => PERC
         elif '%' in word:
             word = 'PERC'
-            
+
         if word not in self.vocabulary:
             self.vocabulary.append(word)
             self.documents[self.current_doc][word] = 1
@@ -208,7 +208,7 @@ class Weighter():
 #< vocabulary = dictionary of words with word_vector and random_vector
 #< context = 'CBOW' or 'skipgram', window = window size (default = 1)
 class Contexter():
-    def __init__(self, vocabulary, contexttype = 'skipgram', window = 2, sentences = True, wordvector_only = True):
+    def __init__(self, vocabulary, contexttype = 'CBOW', window = 4, sentences = True, wordvector_only = True):
         self.vocabulary = vocabulary
         self.window = window
 
@@ -252,11 +252,11 @@ class Contexter():
             #< save history or something
 
         if self.wordvector_only:
-            return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}, {'name': 'Temporary data', 
+            return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}, {'name': 'Temporary data',
                                                                                     'context': self.contexttype,
                                                                                     'window': self.window,
                                                                                     'weights': 'tf-idf'}
-                                                                                    
+
         else:
             return self.vocabulary, {'name': 'Temporary data',
                                      'context': self.contexttype,
@@ -270,20 +270,20 @@ class Contexter():
         for i, word in enumerate(context_text):
 #            print(word)
             context = []
-            
+
             if self.contexttype == 'CBOW':
                 #words before
                 if (i-self.window) <= 0:
                     context += context_text[:i]
                 else:
                     context += context_text[i-self.window:i]
-    
+
                 #< words after
                 if (i+self.window) >= len(context_text):
                     context += context_text[i+1:]
                 else:
                     context += context_text[i+1:i+1+self.window]
-                    
+
             elif self.contexttype == 'skipgram':
                 #word before
                 if (i-self.window-1) < 0:
@@ -291,7 +291,7 @@ class Contexter():
                 else:
                     context.append(context_text[i-self.window-1])
 #                    print(context_text[i-self.window-1], 'before')
-                
+
                 #< words after
                 if (i+self.window+1) >= len(context_text):
                     pass
@@ -484,7 +484,7 @@ class DataOptions():
             elif arg_w == '-docs':
                 print('Document \t\t Unique \t Total')
                 for doc_info in self.documents:
-                    print('{0} \t {1} \t {2}'.format(doc_info, len(self.documents[doc_info].keys()), sum(self.documents[doc_info].values())))
+                    print('{0} \t\t {1} \t {2}'.format(doc_info, len(self.documents[doc_info].keys()), sum(self.documents[doc_info].values())))
                 print('')
 
             else:
@@ -497,7 +497,7 @@ class DataOptions():
                     print('Document \t\t Occurences')
                     for w in self.documents:
                         if arg in self.documents[w]:
-                            print('{0} \t {1}'.format(w, self.documents[w][arg]))
+                            print('{0} \t\t {1}'.format(w, self.documents[w][arg]))
                             total[0] += self.documents[w][arg]
                             total[1] += 1
                     print('{0} occurences in {1} documents'.format(total[0], total[1]))
