@@ -139,13 +139,13 @@ class DataReader():
             self.vocabulary.append(word)
             self.documents[self.current_doc][word] = 1
         else:
-            self.documents[self.current_doc][word] +=1
+            self.documents[self.current_doc][word] += 1
 
         return word
 
 
 class RandomVectorizer():
-    def __init__(self, dimensions = 1024, random_elements = 6):
+    def __init__(self, dimensions = 2048, random_elements = 6):
         self.dimensions = dimensions
         self.random_elements = random_elements
         self.vocabulary = defaultdict(dict)
@@ -200,7 +200,7 @@ class Weighter():
                 df += 1
                 tf.append(1 + math.log10(self.documents_count[doc][word]/sum(self.documents_count[doc].values())))
 
-        #< return vector * tf-idf
+        #< return vector * tf-idf, save tfidf value for future info???
         return vector * (sum(tf) * math.log10(self.documents_n/df))
 
 
@@ -208,7 +208,7 @@ class Weighter():
 #< vocabulary = dictionary of words with word_vector and random_vector
 #< context = 'CBOW' or 'skipgram', window = window size (default = 1)
 class Contexter():
-    def __init__(self, vocabulary, contexttype = 'CBOW', window = 3, sentences = False, wordvector_only = True):
+    def __init__(self, vocabulary, contexttype = 'skipgram', window = 2, sentences = True, wordvector_only = True):
         self.vocabulary = vocabulary
         self.window = window
 
@@ -256,15 +256,19 @@ class Contexter():
                                                                                     'context': self.contexttype,
                                                                                     'window': self.window,
                                                                                     'weights': 'tf-idf'}
+                                                                                    
         else:
             return self.vocabulary, {'name': 'Temporary data',
                                      'context': self.contexttype,
                                      'window': self.window,
                                      'weights': 'tf-idf'}
 
-    #TODO: CHECK SKIPGRAM, wierd cosine sim
+    #TODO: CHECK SKIPGRAM, wierd cosine sim, fixxed???
+    #< Skip gram great accuracy mikolov et al
     def read_contexts(self, context_text):
+#        print(context_text)
         for i, word in enumerate(context_text):
+#            print(word)
             context = []
             
             if self.contexttype == 'CBOW':
@@ -285,14 +289,15 @@ class Contexter():
                 if (i-self.window-1) < 0:
                     pass
                 else:
-                    context += context_text[i-self.window-1]
+                    context.append(context_text[i-self.window-1])
+#                    print(context_text[i-self.window-1], 'before')
                 
                 #< words after
                 if (i+self.window+1) >= len(context_text):
                     pass
                 else:
-                    context += context_text[i+1+self.window]
-                
+                    context.append(context_text[i+1+self.window])
+#                    print(context_text[i+self.window+1], 'after')
 
             #< add vectors in context
             if context:
@@ -327,7 +332,7 @@ class Similarity():
     def __init__(self, vocabulary):
         self.vocabulary = vocabulary
 
-        #TODO: Fix handling of different datatypes
+        #TODO: Fix handling of different datatypes, only takes vocab of second type atm:
         #vocab{ word: {word_vector:[]} {random_vector:[]} } VS vocab{ word: {word_vector:[]} }
 
     def cosine_similarity(self, s_word1, s_word2):
@@ -447,14 +452,12 @@ class DataOptions():
         for doc_item in vocab_npdata:
             for defaultd in doc_item:
                 self.vocabulary = defaultd
-                print(self.vocabulary)
 
         doc_npdata = data['documents']
         doc_npdata.resize(1,1)
         for doc_item in doc_npdata:
             for defaultd in doc_item:
                 self.documents = defaultd
-                print(self.documents)
 
         data_npdata = data['data_info']
         data_npdata.resize(1,1)
