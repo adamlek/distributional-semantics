@@ -62,7 +62,7 @@ def main():
         elif setup[0] == 'load':
             if not new_data:
                 try:
-                    vector_vocabulary, documents, data_info = dt.load(setup[1])
+                    word_vector_vocabulary, documents, data_info = dt.load(setup[1])
                     break
                 except Exception as e:
                     print('Try again\n', e)
@@ -70,10 +70,10 @@ def main():
         #< input a new data source
         elif setup[0] == 'new':
             new_data = True
+#            set1 = ['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt']
+            set2 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt']
             dr = DataReader()
-#            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt'])
-#            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/test_doc_5.txt'])#, '/home/usr1/git/dist_data/test_doc_2.txt'])#, '/home/usr1/git/dist_data/austen-emma.txt']) 
-            sentences, vocabulary, documents = dr.preprocess_data(['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_5.txt', ])            
+            sentences, vocabulary, documents = dr.preprocess_data(set2)          
             rv = RandomVectorizer()
             vector_vocabulary = rv.vocabulary_vectorizer(vocabulary)
         #< apply precessed data
@@ -87,7 +87,7 @@ def main():
 
                 rc = Contexter(vector_vocabulary)
                 word_vector_vocabulary, data_info = rc.process_data(sentences)
-                dt = DataOptions(vector_vocabulary, documents, data_info)
+                dt = DataOptions(word_vector_vocabulary, documents, data_info)
                 break
             else:
                 print('Invalid command')
@@ -134,18 +134,18 @@ def main():
                 print('Invalid input for "sim"\n', e)
 
         elif input_args[0] == 'top':
-            try:
-                top_res = sim.top_similarity(input_args[1].lower())
-                if top_res == str(top_res):
-                    print(top_res)
-                else:
-                    print('Top similar words for "{0}" is:'.format(input_args[1]))
-                    for i, (dist, word) in enumerate(top_res):
-                        print(i+1, dist[0][0], word)
-                    print('')
-            except Exception as e:
-                print(e)
-                print('Invalid input for "top"\n')
+#            try:
+            top_res = sim.top_similarity(input_args[1].lower())
+            if top_res == str(top_res):
+                print(top_res)
+            else:
+                print('Top similar words for "{0}" is:'.format(input_args[1]))
+                for i, (dist, word) in enumerate(top_res):
+                    print(i+1, dist, word)
+                print('')
+#            except Exception as e:
+#                print(e)
+#                print('Invalid input for "top"\n')
 
         #< quit
         elif input_args[0] == 'exit':
@@ -154,7 +154,7 @@ def main():
         #< save data
         elif input_args[0] == 'save':
             try:
-                print(dt.save(input_args[1], vector_vocabulary, documents, data_info))
+                print(dt.save(input_args[1], word_vector_vocabulary, documents, data_info))
             except Exception as e:
                 print('Error\n{0}'.format(e))
 
