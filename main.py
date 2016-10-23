@@ -71,9 +71,9 @@ def main():
         elif setup[0] == 'new':
             new_data = True
 #            set1 = ['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt']
-            set2 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt']
+            set2 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/austen-sense.txt', '/home/usr1/git/dist_data/austen-persuasion.txt', '/home/usr1/git/dist_data/blake-poems.txt', '/home/usr1/git/dist_data/bryant-stories.txt', '/home/usr1/git/dist_data/burgess-busterbrown.txt', '/home/usr1/git/dist_data/carroll-alice.txt', '/home/usr1/git/dist_data/chesterton-brown.txt', '/home/usr1/git/dist_data/chesterton-thursday.txt', '/home/usr1/git/dist_data/edgeworth-parents.txt', '/home/usr1/git/dist_data/melville-moby_dick.txt', '/home/usr1/git/dist_data/milton-paradise.txt', '/home/usr1/git/dist_data/shakespeare-hamlet.txt', '/home/usr1/git/dist_data/shakespeare-macbeth.txt', '/home/usr1/git/dist_data/whitman-leaves.txt', '/home/usr1/Python_Prg_1/SU_PY/project/et_45.txt']
             dr = DataReader()
-            sentences, vocabulary, documents = dr.preprocess_data(set2)          
+            sentences, vocabulary, documents = dr.preprocess_data(set2)
             rv = RandomVectorizer()
             vector_vocabulary = rv.vocabulary_vectorizer(vocabulary)
         #< apply precessed data
