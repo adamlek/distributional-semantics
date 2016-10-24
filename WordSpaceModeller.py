@@ -1,10 +1,18 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Oct 17 22:21:38 2016
-
 @author: Adam Ek
 
-TODO: name change to WordSpaceModeller.py
+WEIGHTING:
+TODO: !!! TEST double-normalization
+TODO: ??? add suggestions when to use which scheme in comments/description
+
+CONTEXTER:
+TODO: !!! return correct configuration of tf-idf (or get it from Weighter.PARAMS :P)
+
+MAJOR:
+add support for LSA/HAL/neural networks
+
 """
 import sklearn.metrics.pairwise as pw
 from stemming.porter2 import stem #ENGLISH
@@ -130,6 +138,9 @@ class DataReader():
 
         return word
 
+#TODO: Add support to make classical word space models
+#- word-vector dimensionality, dimensionality reduction: SVD [after/in Contexter]
+#TODO: Add training stuff, such that vectors can be reused easier
 class RandomVectorizer():
     """
     Creates word and random vectors from a vocabulary(list of words)
@@ -170,7 +181,6 @@ class RandomVectorizer():
 
         return arr
 
-#< document_count = dictionary of documents with word_count of words in them
 class Weighter():
     """
     Weights vector based on tf-idf
@@ -202,8 +212,7 @@ class Weighter():
         self.tf_doublenorm = tf_doublenorm
 
     def weight(self, word, vector):
-        #< calculate tf and idf
-        #< if more than one document
+        #< calculate term frequency
         tf = []
         df = 0
         for doc in self.document_dict:
@@ -216,12 +225,13 @@ class Weighter():
                 #< Double normalization
                 #< 0.5 + (0.5 * ((freq/doc_freq)/max_freq*(max_freq/doc_freq)))
                 elif self.tf_doublenorm == True:
-                    max_val = [(k, v) for k,v in self.document_dict[doc].items() if v==max(self.document_dict[doc].values())][0]
-                    tf.append(0.5 + (0.5 * ((self.document_dict[doc][word]/sum(self.document_dict[doc].values()))/(max_val[1]*(max_val[1]/sum(self.document_dict[doc].values()))))))
+                    max_val = [v for k,v in self.document_dict[doc].items() if v==max(self.document_dict[doc].values())][0]
+                    tf.append(0.5 + (0.5 * ((self.document_dict[doc][word]/sum(self.document_dict[doc].values()))/(max_val*(max_val/sum(self.document_dict[doc].values()))))))
                 #< raw term frequency, (freq/doc_freq)
                 else:
                     tf.append(self.document_dict[doc][word]/sum(self.document_dict[doc].values()))
 
+        #< calculate tf-idf
         if self.documents_n > 1:
             if self.idf: #< only compute iddf if more than 1 doc and idf == True
                 if self.tf_doublenorm: #< query term weighting scheme 1 from wikipedia
@@ -231,6 +241,7 @@ class Weighter():
         else:
             weight = sum(tf)
 
+        #< save weights for lookup
         self.word_weights[word] = weight
         #< return vector * tf-idf, save tfidf value for future info???
         return vector * weight
@@ -262,20 +273,20 @@ class Contexter():
     """
     def __init__(self, vocabulary, contexttype = 'CBOW', window = 1, sentences = True, distance_weights = False):
         self.vocabulary = vocabulary
+        
         self.window = window
-        self.context_types = {'CBOW': 1, 'skipgram': self.window}
+        self.context_types = set('CBOW', 'skipgram')
         if contexttype in self.context_types:
             self.contexttype = contexttype
         else:
             self.contexttype = 'CBOW'
-        #< params
         self.distance_weights = distance_weights #TODO add weighting at self.word_addition
         self.sentences = sentences
-        self.history = [] #TODO: history of vector additions, for later use
+        self.history = [] #< ??? history of vector additions, for later use (updating data) 
 
     def process_data(self, sentences, update = False):
         print('Reading text...\n')
-        #< read all sentences
+        #< read sentence by sentence
         if self.sentences:
             for sentence in sentences:
                 self.read_contexts(sentence)
@@ -297,8 +308,6 @@ class Contexter():
                                                                                 'window': self.window,
                                                                                 'weights': 'tf-idf'}
 
-    #TODO: CHECK SKIPGRAM, wierd cosine sim, fixxed???
-    #< Skip gram great accuracy mikolov et al
     def read_contexts(self, context_text):
         for i, word in enumerate(context_text):
             context = []
@@ -309,7 +318,6 @@ class Contexter():
                     context += context_text[:i]
                 else:
                     context += context_text[i-self.window:i]
-
                 #< words after
                 if (i+self.window) >= len(context_text):
                     context += context_text[i+1:]
@@ -322,7 +330,6 @@ class Contexter():
                     pass
                 else:
                     context.append(context_text[i-self.window-1])
-
                 #< words after
                 if (i+self.window+1) >= len(context_text):
                     pass
@@ -359,7 +366,7 @@ class Similarity():
     """
     def __init__(self, vocabulary):
         self.vocabulary = vocabulary
-        #vocab{ word: [word_vector] }
+        #vocab structure {word: [word_vector]}
 
     def cosine_similarity(self, s_word1, s_word2):
         #< stem input
@@ -391,7 +398,7 @@ class Similarity():
         #TODO handle division by zero
         return dot_prod / (vec1 * vec2)
 
-    #TODO: Maybe make prittier somehow?
+    #TODO: Maybe make prittier somehow? especially make more EFFICIENT! slow with large dataset
     def top_similarity(self, s_word):
         word = stem(s_word)
 
@@ -503,6 +510,7 @@ class DataOptions():
                 print('Unique words: {0}'.format(sum([len(self.documents[x].keys()) for x in self.documents])))
                 print('Total words: {0}\n'.format(sum([sum(self.documents[x].values()) for x in self.documents])))
 
+            #< TODO fix alignment
             elif arg_w == '-docs':
                 print('Document \t\t Unique \t Total')
                 for doc_info in self.documents:
@@ -517,6 +525,8 @@ class DataOptions():
                     print('"{0}" stemmed to "{1}"\n'.format(arg_w, arg))
                     total = [0, 0]
                     print('Document \t\t Occurences')
+                    
+                    #< TODO fix alignment
                     for w in self.documents:
                         if arg in self.documents[w]:
                             print('{0} \t\t {1}'.format(w, self.documents[w][arg]))
@@ -529,9 +539,3 @@ class DataOptions():
 class data_formatter():
     def __init__():
         pass
-
-
-
-
-
-
