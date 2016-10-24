@@ -5,10 +5,6 @@ Created on Mon Oct 17 22:21:38 2016
 
 WEIGHTING:
 TODO: !!! TEST double-normalization
-TODO: ??? add suggestions when to use which scheme in comments/description
-
-CONTEXTER:
-TODO: !!! return correct configuration of tf-idf (or get it from Weighter.PARAMS :P)
 
 MAJOR:
 add support for LSA/HAL/neural networks
@@ -26,15 +22,15 @@ import math
 class DataReader():
     """
     Reads data from .txt files and organizes them into sentences.
-    
+
     PARAMS:
-        Numerize: NULL ATM (default: False)
-    
+        Numerize: Not us use (default: False)
+
     INPUT:
         preprocess_data: List of .txt files
         sentencizer: Line of text
         word_formatter: string
-            
+
     OUTPUT:
         List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
     """
@@ -144,15 +140,15 @@ class DataReader():
 class RandomVectorizer():
     """
     Creates word and random vectors from a vocabulary(list of words)
-    
+
     PARAMS:
         dimensions: dimensionality of the random/word vector (default: 2048)
         random_elements: how many random indices to insert +1's and -1's into in the random vector (default: 6)
-        
+
     INPUT:
         vocabulary_vectorizer: List of words
         random_vector: None
-        
+
     OUTPUT:
         Dictionary of words in vocabulary with a word_vector and a random_vector
     """
@@ -181,111 +177,154 @@ class RandomVectorizer():
 
         return arr
 
+#TODO test updates
 class Weighter():
     """
     Weights vector based on tf-idf
-    
+    https://en.wikipedia.org/wiki/Tf%E2%80%93idf
+
+    Weighter.weight_setup for weight_setup
+
     PARAMS:
-        tf_log: add log-normalization to term frequency (default: False)
-        tf_doublenorm: add double normalization to term frequency (default: False)
-        idf: compute idf (default: True)
-        
+        tf_log: compute log-normalization term frequency (default: False)
+        tf_doublenorm: compute double-normalization term frequency (default: False)
+        doidf: compute idf (default: True)
+
     INPUT:
         INIT: scheme: weighting scheme, arbitrary atms
             document_dict: dictionary of documents and their word count
 
-        METHODS:        
+        METHODS:
         weight: word, random vector
-        TODO:
-            weight_object: dictionary of words and random vectors
+        weight_list: list of strings
+        tf: string
+        idf: string
+
     OUTPUT:
         tf-idf weighted vector
     """
-    def __init__(self, scheme, document_dict, tf_log = False, tf_doublenorm = False, idf = True):
-        self.scheme = scheme
+    def __init__(self, document_dict, tf_log = False, tf_doublenorm = False, doidf = True):
         self.document_dict = document_dict
         self.documents_n = len(document_dict)
         self.word_weights = defaultdict(int)
-        
-        self.idf = idf
+
+        self.doidf = doidf
         self.tf_log = tf_log
         self.tf_doublenorm = tf_doublenorm
 
-    def weight(self, word, vector):
-        #< calculate term frequency
-        tf = []
-        df = 0
-        for doc in self.document_dict:
-            if word in self.document_dict[doc]:
-                df += 1
-                #< log10 normalization, set == True for weighting scheme 3
-                #< 1 + log10(freq/doc_freq)
-                if self.tf_log == True: 
-                    tf.append(1 + math.log10(self.document_dict[doc][word]/sum(self.document_dict[doc].values())))
-                #< Double normalization
-                #< 0.5 + (0.5 * ((freq/doc_freq)/max_freq*(max_freq/doc_freq)))
-                elif self.tf_doublenorm == True:
-                    max_val = [v for k,v in self.document_dict[doc].items() if v==max(self.document_dict[doc].values())][0]
-                    tf.append(0.5 + (0.5 * ((self.document_dict[doc][word]/sum(self.document_dict[doc].values()))/(max_val*(max_val/sum(self.document_dict[doc].values()))))))
-                #< raw term frequency, (freq/doc_freq)
-                else:
-                    tf.append(self.document_dict[doc][word]/sum(self.document_dict[doc].values()))
-
-        #< calculate tf-idf
-        if self.documents_n > 1:
-            if self.idf: #< only compute iddf if more than 1 doc and idf == True
-                if self.tf_doublenorm: #< query term weighting scheme 1 from wikipedia
-                    weight = sum(tf) * math.log10((self.documents_n/df))
-                else:
-                    weight = sum(tf) * math.log10(1+(self.documents_n/df))
+        if self.doidf:
+            self.weight_setup = 'tf-idf'
         else:
-            weight = sum(tf)
+            self.weight_setup = 'tf'
+
+        if self.tf_log:
+            self.weight_setup += ' log norm'
+        elif self.tf_doublenorm:
+            self.weight_setup += ' double norm'
+
+        print(self.weight_setup)
+
+    def weight(self, word, vector):
+        weight = self.tf(word)
+        if self.documents_n > 1:
+            if self.doidf:
+                weight *= self.idf(word)
 
         #< save weights for lookup
         self.word_weights[word] = weight
         #< return vector * tf-idf, save tfidf value for future info???
         return vector * weight
 
+    def weight_list(self, wordlist):
+        weight_dict = defaultdict(float)
+        for word in wordlist:
+            weight = self.tf(word)
+            if self.documents_n > 1:
+                if self.doidf:
+                    weight *= self.idf(word)
+
+            weight_dict[word] = weight
+
+        return weight_dict
+
+    def tf(self, word):
+        tf = []
+        for doc in self.document_dict:
+            if word in self.document_dict[doc]:
+                #< log10 normalization, set == True for weighting scheme 3 from wikipedia
+                #< 1 + log10(freq/doc_freq)
+                if self.tf_log:
+                    tf.append(1 + math.log10(self.document_dict[doc][word]/sum(self.document_dict[doc].values())))
+                #< Double normalization
+                #< 0.5 + (0.5 * ((freq/doc_freq)/max_freq*(max_freq/doc_freq)))
+                elif self.tf_doublenorm:
+                    max_val = max(self.document_dict[doc].values())
+                    w1 = self.document_dict[doc][word]/sum(self.document_dict[doc].values())
+                    w2 = max_val*(max_val/sum(self.document_dict[doc].values()))
+
+                    tf.append(0.5 + (0.5 * (w1/w2)))
+                #< raw term frequency, (freq/doc_freq)
+                else:
+                    tf.append(self.document_dict[doc][word]/sum(self.document_dict[doc].values()))
+
+        return sum(tf)
+
+    def idf(self, word):
+        inverse_df = float
+        df = [x for x in self.document_dict if word in self.document_dict[x]]
+        #< query term weighting scheme 1 from wikipedia
+        if self.tf_doublenorm:
+            inverse_df = math.log10((self.documents_n/len(df)))
+        #< query term weighting scheme 3 from wikipedia
+        else:
+            inverse_df = math.log10(1+(self.documents_n/len(df)))
+
+        return inverse_df
+
 #< Read a list of sentences and apply vector addition from context
 #< vocabulary = dictionary of words with word_vector and random_vector
 #< context = 'CBOW' or 'skipgram', window = window size (default = 1)
 class Contexter():
     """
-    Reads sentences/text and determines a words context, then performs vector addition
-    
+    Reads sentences/text and determines a words context, then performs vector addition.
+    Takes pre-weighted vectors
+
+    Contexter.data_info to get the data_info
+
     PARAMS:
         contexttype: Which type of context, CBOW or skipgram (default: CBOW)
         window: size of context, CBOW: how many words to take, skipgram: how many words to skip (default: 1)
         sentences: set context boundry at sentence boundaries (default: True)
         distance_weights: give weights to words based on distance (default: False) TODO TODO TODO
-        
+
     INPUT:
-        INIT: 
+        INIT:
             vocabulary of word vectors
         METHODS:
             process_data: sentences/text
             read_contexts: sentence/text
             vector_addittion: word vector, random vector
-            
+
     OUTPUT:
         Dictionary of words in vocabulary with a updated word_vector
-        Dictionary of data_info: name: x, context: y, window: n, weights: m
     """
     def __init__(self, vocabulary, contexttype = 'CBOW', window = 1, sentences = True, distance_weights = False):
         self.vocabulary = vocabulary
-        
+
         self.window = window
-        self.context_types = set('CBOW', 'skipgram')
+        self.context_types = ['CBOW', 'skipgram']
         if contexttype in self.context_types:
             self.contexttype = contexttype
         else:
             self.contexttype = 'CBOW'
         self.distance_weights = distance_weights #TODO add weighting at self.word_addition
         self.sentences = sentences
-        self.history = [] #< ??? history of vector additions, for later use (updating data) 
+        self.history = [] #< ??? history of vector additions, for later use (updating data)
+
+        self.data_info = {'name': 'Temporary data','context': self.contexttype,'window': self.window, 'weights': 'tf-idf'} #< finetune
 
     def process_data(self, sentences, update = False):
-        print('Reading text...\n')
+#        print('Reading text...\n')
         #< read sentence by sentence
         if self.sentences:
             for sentence in sentences:
@@ -303,10 +342,7 @@ class Contexter():
             pass
             #< save history or something
 
-        return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}, {'name': 'Temporary data',
-                                                                                'context': self.contexttype,
-                                                                                'window': self.window,
-                                                                                'weights': 'tf-idf'}
+        return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
 
     def read_contexts(self, context_text):
         for i, word in enumerate(context_text):
@@ -351,7 +387,7 @@ class Contexter():
 class Similarity():
     """
     Cosine similarities between vectors
-    
+
     INPUT:
         INIT: vocabulary of words and their word_vectors
 
@@ -359,7 +395,7 @@ class Similarity():
         cosine_similarity:
             input: string1, string2
             output: cosine similarity between str1 and str2
-    
+
         top:
             input: string
             output: top 5 most cosine similar words
@@ -435,9 +471,9 @@ class Similarity():
 class DataOptions():
     """
     Handling data, commands are save, load and info
-    
+
     save
-        input: filename
+        input: filename, vocabulary{word: vector}, documents{doc: word_counts}, data_info{info}, weight_setup
         output: filename.npz
 
     load:
@@ -451,20 +487,22 @@ class DataOptions():
         input: optional(string, -weight string, -docs)
         output: info about data or word if supplied
     """
-    def __init__(self, vocabulary = None, documents = None, data_info = None):
+    def __init__(self, vocabulary = None, documents = None, data_info = None, weight_setup = None):
         self.vocabulary = vocabulary
         self.documents = documents
         self.data_info = data_info
+        self.data_info['weights'] = weight_setup
 
     #z Save curretly loaded data
-    def save(self, save_name, vocabulary, documents, data_info):
+    def save(self, save_name, vocabulary, documents, data_info, weight_setup):
         self.vocabulary = vocabulary
         self.documents = documents
         self.data_info = data_info
+        data_info['name'] = save_name
+        data_info['weights'] = weight_setup
 
         try:
             file = '/home/usr1/git/dist_data/d_data/{0}.npz'.format(save_name)
-            data_info['name'] = save_name
             np.savez(file, vocabulary = vocabulary, documents = documents, data_info = data_info)
 
             return 'Saved complete: /home/usr1/git/dist_data/d_data/{0}.npz'.format(save_name)
@@ -501,38 +539,18 @@ class DataOptions():
     def info(self, arg_w = False):
         if self.documents != None and self.data_info != None:
             if arg_w == False:
-                print('Data info: {0}'.format(self.data_info['name']))
-                print('Weighting scheme: {0}'.format(self.data_info['weights']))
-                print('Context type: {0}'.format(self.data_info['context']))
-                print('Context window size: {0}\n'.format(self.data_info['window']))
+                return self.documents, self.data_info
 
-                print('Total documents: {0}'.format(len(self.documents.keys())))
-                print('Unique words: {0}'.format(sum([len(self.documents[x].keys()) for x in self.documents])))
-                print('Total words: {0}\n'.format(sum([sum(self.documents[x].values()) for x in self.documents])))
-
-            #< TODO fix alignment
             elif arg_w == '-docs':
-                print('Document \t\t Unique \t Total')
-                for doc_info in self.documents:
-                    print('{0} \t {1} \t {2}'.format(doc_info, len(self.documents[doc_info].keys()), sum(self.documents[doc_info].values())))
-                print('')
+                return self.documents
 
             else:
                 arg = stem(arg_w)
                 if arg not in self.vocabulary.keys():
                     return '{0} does not exist, try again\n'.format(arg)
                 else:
-                    print('"{0}" stemmed to "{1}"\n'.format(arg_w, arg))
-                    total = [0, 0]
-                    print('Document \t\t Occurences')
-                    
-                    #< TODO fix alignment
-                    for w in self.documents:
-                        if arg in self.documents[w]:
-                            print('{0} \t\t {1}'.format(w, self.documents[w][arg]))
-                            total[0] += self.documents[w][arg]
-                            total[1] += 1
-                    print('{0} occurences in {1} documents'.format(total[0], total[1]))
+                    return {w: self.documents[w][arg] for w in self.documents}, arg
+
         else:
             print('No data loaded!')
 
