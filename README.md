@@ -6,13 +6,11 @@ Modules:
 * re
 * random
 * math
-
 * sklearn.metrics.pairwise 
 * stemming.porter2.stem
 * numpy
 
 Classes:
-
 
 DataReader:
 
@@ -51,9 +49,19 @@ https://en.wikipedia.org/wiki/Tf%E2%80%93idf
 
 Weighter.weight_setup for weighting setup
 
+	SCHEMES:
+		scheme 0: standard
+			freq/doc_freq * log(N/n)
+
+		scheme 1: double normalization
+			0.5 + (0.5 * ((freq/doc_freq)/(max_freq*(max_freq/doc_freq)))) * log(N/n)
+
+		scheme 2: log normalization
+			1 + log10(freq/doc_freq) * log(N/n)
+
     PARAMS:
-        tf_log: add log-normalization to term frequency (default: False)
-        tf_doublenorm: add double normalization to term frequency (default: False)
+        scheme: select a weighting scheme to use (default: 0)
+        smooth_idf: smooth the idf weight log(1+(N/n))(default: False)
         doidf: compute idf (default: True)
         
     INPUT:
