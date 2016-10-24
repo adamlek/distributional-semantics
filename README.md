@@ -31,7 +31,9 @@ Modules:
 Classes:
 
 DATA CLASSES
+
 DataReader:
+
 Reads data from .txt files and organizes them into sentences.
 
         PARAMS:
@@ -46,6 +48,7 @@ Reads data from .txt files and organizes them into sentences.
             List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
 
 RandomVectorizer:
+
 Creates word and random vectors from a vocabulary(list of words)
 
     PARAMS:
@@ -60,6 +63,7 @@ Creates word and random vectors from a vocabulary(list of words)
         Dictionary of words in vocabulary with a word_vector and a random_vector
 
 Weighter:
+
 Weights vector based on tf-idf
 
     PARAMS:
@@ -81,6 +85,7 @@ Weights vector based on tf-idf
         tf-idf weighted vector
 
 Contexts:
+
 Reads sentences/text and determines a words context, then performs vector addition
 
     PARAMS:
@@ -102,7 +107,9 @@ Reads sentences/text and determines a words context, then performs vector additi
         Dictionary of data_info: name: x, context: y, window: n, weights: m
 
 USER QUERY/MODEL OUTPUT CLASSES
+
 Similarity:
+
 Cosine similarities between vectors
 
     INPUT:
@@ -118,6 +125,7 @@ Cosine similarities between vectors
             output: top 5 most cosine similar words
 
 DataOptions:
+
 Handling data, commands are save, load and info
 
     save
