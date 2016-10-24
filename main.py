@@ -1,47 +1,19 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Oct 17 13:29:13 2016
-
 @author: Adam Ek
 
-Class1: Read data with Random Indexing
-    input: .txt file
-    output: success_rate, sentences, {vocabulary: [word_vector][random_vector][word_count_doc_n], documents: ...}
-
-Class2: Read data and apply weights
-    input: {vocabulary: [word_vector][random_vector][word_count_doc_n], documents: ...}
-    output {vocabulary: [word_vector][WEIGHTED_random_vector][word_count_doc_n], documents: ...}
-
-Class3: Read contexts
-    input: list of sentences
-    output: {vocabulary: [word_vector][random_vector][word_count_doc_n], documents: ...}
-
-Class4: Evaluate data
-    command: 'sim word1 word2'
-    input: two words
-    output: similarity between them
-
-    command: 'top word'
-    input: one word
-    output: top similar words
-
-Class5: Data operations
-    input: command
-    output: message
-
 """
-from randomindexer import DataReader
-from randomindexer import RandomVectorizer
-from randomindexer import Weighter
-from randomindexer import Contexter
-from randomindexer import Similarity
-from randomindexer import DataOptions
+from WordSpaceModeller import DataReader
+from WordSpaceModeller import RandomVectorizer
+from WordSpaceModeller import Weighter
+from WordSpaceModeller import Contexter
+from WordSpaceModeller import Similarity
+from WordSpaceModeller import DataOptions
 
 import sys
 
 def main():
-    dt = DataOptions()
-
     print('Welcome to Distributial Semantics with Random Indexing\n')
     new_data = False
     settings = []
@@ -72,8 +44,8 @@ def main():
             new_data = True
 #            set1 = ['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt']
 #            set2 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/austen-sense.txt', '/home/usr1/git/dist_data/austen-persuasion.txt', '/home/usr1/git/dist_data/blake-poems.txt', '/home/usr1/git/dist_data/bryant-stories.txt', '/home/usr1/git/dist_data/burgess-busterbrown.txt', '/home/usr1/git/dist_data/carroll-alice.txt', '/home/usr1/git/dist_data/chesterton-brown.txt', '/home/usr1/git/dist_data/chesterton-thursday.txt', '/home/usr1/git/dist_data/edgeworth-parents.txt', '/home/usr1/git/dist_data/melville-moby_dick.txt', '/home/usr1/git/dist_data/milton-paradise.txt', '/home/usr1/git/dist_data/shakespeare-hamlet.txt', '/home/usr1/git/dist_data/shakespeare-macbeth.txt', '/home/usr1/git/dist_data/whitman-leaves.txt']#, '/home/usr1/Python_Prg_1/SU_PY/project/et_45.txt']
-            set2 = ['/home/usr1/git/dist_data/corpus/et_45.txt']
-#            set2 = ['/home/usr1/git/dist_data/test_doc_3.txt']
+#            set2 = ['/home/usr1/git/dist_data/corpus/et_45.txt']
+            set2 = ['/home/usr1/git/dist_data/test_doc_3.txt']
             dr = DataReader()
             sentences, vocabulary, documents = dr.preprocess_data(set2)
             rv = RandomVectorizer()
@@ -82,14 +54,16 @@ def main():
         elif setup[0] == 'apply':
             if new_data:
 
-                wgt = Weighter('tf-idf', documents)
+                wgt = Weighter(documents)
 
                 for x in vector_vocabulary:
                     vector_vocabulary[x]['random_vector'] = wgt.weight(x, vector_vocabulary[x]['random_vector'])
 
+                #TODO: !!! handle weight_list
+
                 rc = Contexter(vector_vocabulary)
-                word_vector_vocabulary, data_info = rc.process_data(sentences)
-                dt = DataOptions(word_vector_vocabulary, documents, data_info)
+                word_vector_vocabulary = rc.process_data(sentences)
+                dt = DataOptions(word_vector_vocabulary, documents, rc.data_info, wgt.weight_setup)
                 break
             else:
                 print('Invalid command')
@@ -155,10 +129,10 @@ def main():
 
         #< save data
         elif input_args[0] == 'save':
-            try:
-                print(dt.save(input_args[1], word_vector_vocabulary, documents, data_info))
-            except Exception as e:
-                print('Error\n{0}'.format(e))
+#            try:
+            print(dt.save(input_args[1], word_vector_vocabulary, documents, rc.data_info, wgt.weight_setup))
+#            except Exception as e:
+#                print('Error\n{0}'.format(e))
 
         #< update data
 # 1. DATAREADER: provide new texts => get updated vocabulary, updated document_lists
@@ -180,15 +154,40 @@ def main():
         elif input_args[0] == 'info':
 #            try:
             if len(input_args) == 1:
-                dt.info()
+                documents, data_info = dt.info()
+                print('Data info: {0}'.format(data_info['name']))
+                print('Weighting scheme: {0}'.format(data_info['weights']))
+                print('Context type: {0}'.format(data_info['context']))
+                print('Context window size: {0}\n'.format(data_info['window']))
+
+                print('Total documents: {0}'.format(len(documents.keys())))
+                print('Unique words: {0}'.format(sum([len(documents[x].keys()) for x in documents])))
+                print('Total words: {0}\n'.format(sum([sum(documents[x].values()) for x in documents])))
+
             else:
                 if input_args[1] == '-weights':
                     if len(input_args) == 3:
                         print(wgt.word_weights[input_args[2].lower()])
                     else:
-                        print(wgt.word_weights)
+                        print(wgt.weight_setup)
+                elif input_args[1] == '-docs':
+                    documents = dt.info('-docs')
+                    print('Document \t\t Unique \t Total')
+                    for doc_info in documents:
+                        print('{0} \t {1} \t {2}'.format(doc_info, len(documents[doc_info].keys()), sum(documents[doc_info].values())))
+                        print('')
+                else:
+                    documents, stemmed_word = dt.info(input_args[1].lower())
+                    print('"{0}" stemmed to "{1}"\n'.format(input_args[1].lower(), stemmed_word))
+                    total = [0, 0]
 
-                dt.info(input_args[1].lower())
+                    print('Document \t\t Occurences')
+                    #< TODO fix alignment
+                    for w in documents:
+                        print('{0} \t\t {1}'.format(w, documents[w]))
+                        total[0] += documents[w]
+                        total[1] += 1
+                    print('{0} occurences in {1} documents'.format(total[0], total[1]))
 
 #            except Exception as e:
 #                print(e)
