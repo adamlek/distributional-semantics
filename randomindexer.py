@@ -179,10 +179,12 @@ class RandomVectorizer():
 
 #< document_count = dictionary of documents with word_count of words in them
 class Weighter():
-    def __init__(self, scheme, documents_count):
+    def __init__(self, scheme, documents_count, tf_log = False):
         self.scheme = scheme
         self.documents_count = documents_count
         self.documents_n = len(documents_count)
+        self.word_weights = defaultdict(int)
+        self.tf_log = tf_log
 #        self.schemes = {'tf-idf': sum(x)/len(d) * math.log(sum(d)/len([z for z in x if z != 0]))}
 
     def weight(self, word, vector):
@@ -193,22 +195,32 @@ class Weighter():
             tf-idf weighted vector
         """
         #< calculate tf and idf
+        #< if more than one document
         tf = []
         df = 0
         for doc in self.documents_count:
             if word in self.documents_count[doc]:
                 df += 1
-                tf.append(1 + math.log10(self.documents_count[doc][word]/sum(self.documents_count[doc].values())))
+                if self.tf_log == False:
+                    tf.append(self.documents_count[doc][word]/sum(self.documents_count[doc].values()))
+                else:
+                    tf.append(1 + math.log10(self.documents_count[doc][word]/sum(self.documents_count[doc].values())))
 
+        if self.documents_n > 1:
+            weight = (sum(tf) * math.log10(1+(self.documents_n/df)))
+        else:
+            weight = sum(tf)
+
+        self.word_weights[word] = weight
         #< return vector * tf-idf, save tfidf value for future info???
-        return vector * (sum(tf) * math.log10(self.documents_n/df))
+        return vector * weight
 
 
 #< Read a list of sentences and apply vector addition from context
 #< vocabulary = dictionary of words with word_vector and random_vector
 #< context = 'CBOW' or 'skipgram', window = window size (default = 1)
 class Contexter():
-    def __init__(self, vocabulary, contexttype = 'CBOW', window = 4, sentences = True, wordvector_only = True):
+    def __init__(self, vocabulary, contexttype = 'CBOW', window = 1, sentences = True, wordvector_only = True):
         self.vocabulary = vocabulary
         self.window = window
 
@@ -484,7 +496,7 @@ class DataOptions():
             elif arg_w == '-docs':
                 print('Document \t\t Unique \t Total')
                 for doc_info in self.documents:
-                    print('{0} \t\t {1} \t {2}'.format(doc_info, len(self.documents[doc_info].keys()), sum(self.documents[doc_info].values())))
+                    print('{0} \t {1} \t {2}'.format(doc_info, len(self.documents[doc_info].keys()), sum(self.documents[doc_info].values())))
                 print('')
 
             else:
