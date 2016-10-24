@@ -1,23 +1,6 @@
 # Distributional Semantics
 Distributional Semantics with Random Indexing
 
-CBOW or skip-gram to determine contexts, default window size is 1.
-
-main.py commands:
-* "sim word1 word2" similarity between two words
-* "top word" top 5 similar words
-
-* "info" information about the data
-* "info word" information about a word
-* "info -docs" info about the documents
-* "info -weight word" info about the weight of a word
-
-* "save name" save current data as "name"
-* "load name" to load saved data 
-* "set setting value" change value of context or window size
-
-* "help" to display all commands
-
 Modules:
 * collections.defaultdict
 * re
@@ -30,7 +13,6 @@ Modules:
 
 Classes:
 
-DATA CLASSES
 
 DataReader:
 
@@ -65,11 +47,14 @@ Creates word and random vectors from a vocabulary(list of words)
 Weighter:
 
 Weights vector based on tf-idf
+https://en.wikipedia.org/wiki/Tf%E2%80%93idf
+
+Weighter.weight_setup for weighting setup
 
     PARAMS:
         tf_log: add log-normalization to term frequency (default: False)
         tf_doublenorm: add double normalization to term frequency (default: False)
-        idf: compute idf (default: True)
+        doidf: compute idf (default: True)
         
     INPUT:
         INIT: scheme: weighting scheme, arbitrary atm
@@ -77,22 +62,26 @@ Weights vector based on tf-idf
 
         METHODS:        
         weight: word, random vector
-
-        TODO:
-            weight_object: dictionary of words and random vectors
+		weight_list: wordlist
+		tf: calculates tf weight
+		idf: calculates idf weights
 
     OUTPUT:
-        tf-idf weighted vector
+        weight: tf-idf weighted vector
+		weight_list: dict{word: weight}
 
-Contexts:
+Contexter:
 
 Reads sentences/text and determines a words context, then performs vector addition
+
+Contexter.data_info for data info
+
 
     PARAMS:
         contexttype: Which type of context, CBOW or skipgram (default: CBOW)
         window: size of context, CBOW: how many words to take, skipgram: how many words to skip (default: 1)
         sentences: set context boundry at sentence boundaries (default: True)
-        distance_weights: give weights to words based on distance (default: False) TODO TODO TODO
+        distance_weights: give weights to words based on distance (default: False) TODO 
 
     INPUT:
         INIT: 
@@ -104,9 +93,7 @@ Reads sentences/text and determines a words context, then performs vector additi
 
     OUTPUT:
         Dictionary of words in vocabulary with a updated word_vector
-        Dictionary of data_info: name: x, context: y, window: n, weights: m
 
-USER QUERY/MODEL OUTPUT CLASSES
 
 Similarity:
 
@@ -141,6 +128,24 @@ Handling data, commands are save, load and info
 
     info
         input: optional(string, -weight string, -docs)
-        output: info about data or word if supplied
+        output: documents, data_info, (word)
+
+
+
+main.py commands:
+* "sim word1 word2" similarity between two words
+* "top word" top 5 similar words
+
+* "info" information about the data
+* "info word" information about a word
+* "info -docs" info about the documents
+* "info -weight word" info about the weight of a word
+
+* "save name" save current data as "name"
+* "load name" to load saved data 
+* "set setting value" change value of context or window size
+
+* "help" to display all commands
+
 
 
