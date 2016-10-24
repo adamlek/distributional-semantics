@@ -185,9 +185,20 @@ class Weighter():
 
     Weighter.weight_setup for weight_setup
 
+    SCHEMES:
+
+    scheme 0: standard
+        freq/doc_freq * log(N/n)
+
+    scheme 1: double normalization
+        0.5 + (0.5 * ((freq/doc_freq)/(max_freq*(max_freq/doc_freq)))) * log(N/n)
+
+    scheme 2: log normalization
+        1 + log10(freq/doc_freq) * log(N/n)
+
     PARAMS:
-        tf_log: compute log-normalization term frequency (default: False)
-        tf_doublenorm: compute double-normalization term frequency (default: False)
+        scheme: select a weighting scheme to use (default: 0)
+        smooth_idf: smooth the idf weight log(1+(N/n))(default: False)
         doidf: compute idf (default: True)
 
     INPUT:
@@ -203,26 +214,27 @@ class Weighter():
     OUTPUT:
         tf-idf weighted vector
     """
-    def __init__(self, document_dict, tf_log = False, tf_doublenorm = False, doidf = True):
+    def __init__(self, document_dict, scheme = 0, smooth_idf = False, doidf = True):
         self.document_dict = document_dict
         self.documents_n = len(document_dict)
         self.word_weights = defaultdict(int)
 
+        self.smooth_idf = smooth_idf
+        self.scheme = scheme
         self.doidf = doidf
-        self.tf_log = tf_log
-        self.tf_doublenorm = tf_doublenorm
 
         if self.doidf:
             self.weight_setup = 'tf-idf'
         else:
             self.weight_setup = 'tf'
 
-        if self.tf_log:
-            self.weight_setup += ' log norm'
-        elif self.tf_doublenorm:
+        if scheme == 1:
             self.weight_setup += ' double norm'
+        elif scheme == 2:
+            self.weight_setup += ' log norm'
+        else:
+            pass
 
-        print(self.weight_setup)
 
     def weight(self, word, vector):
         weight = self.tf(word)
@@ -243,21 +255,19 @@ class Weighter():
                 if self.doidf:
                     weight *= self.idf(word)
 
-            weight_dict[word] = weight
+            self.word_weights[word] = weight
 
-        return weight_dict
+        return self.word_weights
 
     def tf(self, word):
         tf = []
         for doc in self.document_dict:
             if word in self.document_dict[doc]:
-                #< log10 normalization, set == True for weighting scheme 3 from wikipedia
-                #< 1 + log10(freq/doc_freq)
-                if self.tf_log:
+                #< log10 normalization
+                if self.scheme == 1:
                     tf.append(1 + math.log10(self.document_dict[doc][word]/sum(self.document_dict[doc].values())))
                 #< Double normalization
-                #< 0.5 + (0.5 * ((freq/doc_freq)/max_freq*(max_freq/doc_freq)))
-                elif self.tf_doublenorm:
+                elif self.scheme == 2:
                     max_val = max(self.document_dict[doc].values())
                     w1 = self.document_dict[doc][word]/sum(self.document_dict[doc].values())
                     w2 = max_val*(max_val/sum(self.document_dict[doc].values()))
@@ -270,14 +280,16 @@ class Weighter():
         return sum(tf)
 
     def idf(self, word):
-        inverse_df = float
-        df = [x for x in self.document_dict if word in self.document_dict[x]]
-        #< query term weighting scheme 1 from wikipedia
-        if self.tf_doublenorm:
-            inverse_df = math.log10((self.documents_n/len(df)))
-        #< query term weighting scheme 3 from wikipedia
+
+        df = sum([1 for x in self.document_dict if word in self.document_dict[x]])
+        #< to smooth or not to smooth, or to smooth, or not to smooth
+        if df != 0:
+            if self.smooth:
+                inverse_df = math.log10(1+(self.documents_n/df))
+            else:
+                inverse_df = math.log10(self.documents_n/df)
         else:
-            inverse_df = math.log10(1+(self.documents_n/len(df)))
+            return 1 #< !!! identity element, no change in weight
 
         return inverse_df
 
@@ -319,7 +331,7 @@ class Contexter():
             self.contexttype = 'CBOW'
         self.distance_weights = distance_weights #TODO add weighting at self.word_addition
         self.sentences = sentences
-        self.history = [] #< ??? history of vector additions, for later use (updating data)
+#        self.history = [] #< ??? history of vector additions, for later use (updating data) NOT IN USE ATM
 
         self.data_info = {'name': 'Temporary data','context': self.contexttype,'window': self.window, 'weights': 'tf-idf'} #< finetune
 
@@ -380,7 +392,7 @@ class Contexter():
     def vector_addition(self, word, target_word):
         if word in self.vocabulary.keys() and target_word in self.vocabulary.keys():
             self.vocabulary[word]['word_vector'] += self.vocabulary[target_word]['random_vector']
-            self.history.append((word, target_word))
+#            self.history.append((word, target_word))
         else:
             pass
 
