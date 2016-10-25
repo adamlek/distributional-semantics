@@ -22,9 +22,6 @@ def main():
 
     wgt = Weighter(documents, scheme=0, doidf=False)
 
-    for x in vectors:
-        vectors[x]['random_vector'] = wgt.weight(x, vectors[x]['random_vector'])
-
     weight_list = wgt.weight_list(vocabulary)
 
     cont = Contexter(vectors, contexttype='CBOW', window=2, weights=weight_list)
