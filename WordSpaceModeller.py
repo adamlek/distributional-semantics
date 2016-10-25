@@ -190,11 +190,11 @@ class Weighter():
     scheme 0: standard
         freq/doc_freq * log(N/n)
 
-    scheme 1: double normalization
-        0.5 + (0.5 * ((freq/doc_freq)/(max_freq*(max_freq/doc_freq)))) * log(N/n)
-
-    scheme 2: log normalization
+    scheme 1: log normalization
         1 + log10(freq/doc_freq) * log(N/n)
+
+    scheme 2: double normalization
+        0.5 + (0.5 * ((freq/doc_freq)/(max_freq*(max_freq/doc_freq)))) * log(N/n)
 
     PARAMS:
         scheme: select a weighting scheme to use (default: 0)
