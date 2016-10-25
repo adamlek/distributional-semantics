@@ -136,7 +136,7 @@ class RandomVectorizer():
     Creates word and random vectors from a vocabulary(list of words)
 
     PARAMS:
-        dimensions: dimensionality of the random/word vector (default: 2048)
+        dimensions: dimensionality of the random/word vector (default: 1024)
         random_elements: how many random indices to insert +1's and -1's into in the random vector (default: 6)
 
     INPUT:
@@ -146,7 +146,7 @@ class RandomVectorizer():
     OUTPUT:
         Dictionary of words in vocabulary with a word_vector and a random_vector
     """
-    def __init__(self, dimensions = 2048, random_elements = 6):
+    def __init__(self, dimensions = 1024, random_elements = 6):
         self.dimensions = dimensions
         self.random_elements = random_elements
         self.vocabulary = defaultdict(dict)
@@ -404,7 +404,7 @@ class Contexter():
             else:
                 return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
         else:
-            pass
+            pass #< what happens when nothing is return to word_vec?????
 
 class Similarity():
     """
@@ -497,7 +497,7 @@ class DataOptions():
     Handling data, commands are save, load and info
 
     save
-        input: filename, vocabulary{word: vector}, documents{doc: word_counts}, data_info{info}, weight_setup
+        input: filename, vocabulary{word: vector}, documents{doc: word_counts}, data_info{name, context, window, weights}, weight_setup
         output: filename.npz
 
     load:
