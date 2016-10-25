@@ -3,9 +3,6 @@
 Created on Mon Oct 17 22:21:38 2016
 @author: Adam Ek
 
-WEIGHTING:
-TODO: !!! TEST double-normalization
-
 MAJOR:
 add support for LSA/HAL/neural networks
 
@@ -28,8 +25,8 @@ class DataReader():
 
     INPUT:
         preprocess_data: List of .txt files
-        sentencizer: Line of text
-        word_formatter: string
+            sentencizer: Line of text
+            word_formatter: string
 
     OUTPUT:
         List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
@@ -41,7 +38,6 @@ class DataReader():
 
     #< By default create vectors from data
     def preprocess_data(self, filenames, numerize = False):
-        print('Processing data...')
         sentences_collection = []
 
         for filename in filenames:
@@ -82,25 +78,23 @@ class DataReader():
 
     #< Create sentences from a line in a document
     def sentencizer(self, line):
-        start_sent = 0
+        start_sent = []
         sentences = []
 
         for i, symbol in enumerate(line):
 
-            if i+1 == len(line):
-                sentences.append(line[start_sent:].split())
+            if i+2 >= len(line):
+                sentences.append(line[start_sent[0]:].split())
+                break
 
             elif symbol.isupper():
                 if line[i+1] != '.' and line[i+1].islower():
-                    start_sent = i
-
-            if i+2 >= len(line):
-                sentences.append(line[start_sent:-1].split())
-                break
+                    start_sent.append(i)
 
             elif symbol == '.' or symbol == '?' or symbol == '!':
                 if line[i+2].isupper():
-                    sentences.append(line[start_sent:i].split())
+                    sentences.append(line[start_sent[0]:i].split())
+                    start_sent = []
 
         return sentences
 
@@ -147,7 +141,7 @@ class RandomVectorizer():
 
     INPUT:
         vocabulary_vectorizer: List of words
-        random_vector: None
+            random_vector: None
 
     OUTPUT:
         Dictionary of words in vocabulary with a word_vector and a random_vector
@@ -202,14 +196,15 @@ class Weighter():
         doidf: compute idf (default: True)
 
     INPUT:
-        INIT: scheme: weighting scheme, arbitrary atms
+        INIT:
             document_dict: dictionary of documents and their word count
+            >>> dict{doc{word: count}}
 
         METHODS:
-        weight: word, random vector
-        weight_list: list of strings
-        tf: string
-        idf: string
+            weight: word/string, [random vector]
+            weight_list: list of strings
+                tf: string
+                idf: string
 
     OUTPUT:
         tf-idf weighted vector
@@ -308,19 +303,23 @@ class Contexter():
         window: size of context, CBOW: how many words to take, skipgram: how many words to skip (default: 1)
         sentences: set context boundry at sentence boundaries (default: True)
         distance_weights: give weights to words based on distance (default: False) TODO TODO TODO
+        weights: do weighting in this class
+            >>> dict{word: weight}
 
     INPUT:
         INIT:
             vocabulary of word vectors
+            >>> dict{word: {word_vector: [word_vector], random_vector: [random_vector]}}
+
         METHODS:
             process_data: sentences/text
-            read_contexts: sentence/text
-            vector_addittion: word vector, random vector
+                read_contexts: sentence/text
+                vector_addition: string1, string2
 
     OUTPUT:
         Dictionary of words in vocabulary with a updated word_vector
     """
-    def __init__(self, vocabulary, contexttype = 'CBOW', window = 1, sentences = True, distance_weights = False):
+    def __init__(self, vocabulary, contexttype = 'CBOW', window = 1, sentences = True, distance_weights = False, weights = False):
         self.vocabulary = vocabulary
 
         self.window = window
@@ -332,18 +331,26 @@ class Contexter():
         self.distance_weights = distance_weights #TODO add weighting at self.word_addition
         self.sentences = sentences
 #        self.history = [] #< ??? history of vector additions, for later use (updating data) NOT IN USE ATM
+        if weights != False:
+            self.weights = weights
 
         self.data_info = {'name': 'Temporary data','context': self.contexttype,'window': self.window, 'weights': 'tf-idf'} #< finetune
 
     def process_data(self, sentences, update = False):
-#        print('Reading text...\n')
         #< read sentence by sentence
         if self.sentences:
             for sentence in sentences:
-                self.read_contexts(sentence)
+                text_cont = self.read_contexts(sentence)
+                for word in text_cont:
+                    for tw in text_cont[word]:
+                        self.vocabulary[word]['word_vector'] = self.vector_addition(word, tw)
+
         # read text as one unit
         else:
-            self.read_contexts([word for li in sentences for word in li])
+            text_cont = self.read_contexts([word for li in sentences for word in li])
+            for word in text_cont:
+                for tw in text_cont[word]:
+                    self.vocabulary[word]['word_vector'] = self.vector_addition(word, tw)
 
         #< needs updating :P :P :P
         #< when updating with new data, re-do all previous vector additions
@@ -357,6 +364,7 @@ class Contexter():
         return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
 
     def read_contexts(self, context_text):
+        word_contexts = defaultdict(list)
         for i, word in enumerate(context_text):
             context = []
 
@@ -384,15 +392,17 @@ class Contexter():
                 else:
                     context.append(context_text[i+1+self.window])
 
-            #< add vectors in context
             if context:
-                for context_word in context:
-                    self.vector_addition(word, context_word)
+                word_contexts[word] = context
+
+        return word_contexts
 
     def vector_addition(self, word, target_word):
         if word in self.vocabulary.keys() and target_word in self.vocabulary.keys():
-            self.vocabulary[word]['word_vector'] += self.vocabulary[target_word]['random_vector']
-#            self.history.append((word, target_word))
+            if self.weights:
+                return self.vocabulary[word]['word_vector'] + (self.vocabulary[target_word]['random_vector'] * self.weights[word])
+            else:
+                return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
         else:
             pass
 
@@ -401,16 +411,18 @@ class Similarity():
     Cosine similarities between vectors
 
     INPUT:
-        INIT: vocabulary of words and their word_vectors
+        INIT:
+            vocabulary of words and their word_vectors
+            >>> dict{word:[word_vector]}
 
         METHODS:
-        cosine_similarity:
-            input: string1, string2
-            output: cosine similarity between str1 and str2
+            cosine_similarity:
+                input: string1, string2
+                output: cosine similarity between str1 and str2
 
-        top:
-            input: string
-            output: top 5 most cosine similar words
+            top:
+                input: string
+                output: top 5 most cosine similar words
     """
     def __init__(self, vocabulary):
         self.vocabulary = vocabulary
