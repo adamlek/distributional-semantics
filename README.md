@@ -14,7 +14,7 @@ Classes:
 
 DataReader:
 
-Reads data from .txt files and organizes them into sentences.
+	Reads data from .txt files and organizes them into sentences.
 
         PARAMS:
             Numerize: NULL ATM (default: False)
@@ -29,10 +29,10 @@ Reads data from .txt files and organizes them into sentences.
 
 RandomVectorizer:
 
-Creates word and random vectors from a vocabulary(list of words)
+	Creates word and random vectors from a vocabulary(list of words)
 
     PARAMS:
-        dimensions: dimensionality of the random/word vector (default: 2048)
+        dimensions: dimensionality of the random/word vector (default: 1024)
         random_elements: how many random indices to insert +1's and -1's into in the random vector (default: 6)
 
     INPUT:
@@ -44,10 +44,10 @@ Creates word and random vectors from a vocabulary(list of words)
 
 Weighter:
 
-Weights vector based on tf-idf
-https://en.wikipedia.org/wiki/Tf%E2%80%93idf
+	Weights vector based on tf-idf
+	https://en.wikipedia.org/wiki/Tf%E2%80%93idf
 
-Weighter.weight_setup for weight_setup
+	Weighter.weight_setup for weight_setup
 
     SCHEMES:
 
@@ -82,7 +82,6 @@ Weighter.weight_setup for weight_setup
 Contexter:
 
     Reads sentences/text and determines a words context, then performs vector addition.
-    Takes pre-weighted vectors
 
     Contexter.data_info to get the data_info
 
@@ -110,7 +109,7 @@ Contexter:
 
 Similarity:
 
-Cosine similarities between vectors
+	Cosine similarities between vectors
 
     INPUT:
         INIT:
@@ -128,10 +127,10 @@ Cosine similarities between vectors
 
 DataOptions:
 
-Handling data, commands are save, load and info
+	Handling data, commands are save, load and info
 
     save
-        input: filename
+        input: filename, vocabulary{word: vector}, documents{doc: word_counts}, data_info{name, context, window, weights}, weight_setup
         output: filename.npz
 
     load:
@@ -161,4 +160,37 @@ main.py commands:
 * "help" to display all commands
 
 
+Example output (from tester.py)
+
+Text:
+		In 1950, Alan Turing published an article titled "Computing-Machinery and Intelligence". Computational linguistics has theoretical and applied components.
+
+
+Datareader
+
+	sentences
+		[['in', 'NUM', 'alan', 'ture', 'publish', 'an', 'articl', 'titl', 'comput', 'machineri', 'and', 'intellig'], ['comput', 'linguist', 'has', 'theoret', 'and', 'appli', 'compon']] 
+
+	vocabulary:
+		['in', 'NUM', 'alan', 'ture', 'publish', 'an', 'articl', 'titl', 'comput', 'machineri', 'and', 'intellig', 'linguist', 'has', 'theoret', 'appli', 'compon'] vocabulary
+
+	documents:
+		defaultdict(<class 'dict'>, {'test_doc_5.txt': defaultdict(<class 'int'>, {'publish': 1, 'intellig': 1, 'alan': 1, 'comput': 2, 'theoret': 1, 'has': 1, 'ture': 1, 'articl': 1, 'linguist': 1, 'machineri': 1, 'titl': 1, 'appli': 1, 'compon': 1, 'in': 1, 'NUM': 1, 'an': 1, 'and': 2})}) documents
+
+
+RandomVectorizer
+
+	vectors:
+		defaultdict(<class 'dict'>, {'publish': {'word_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'random_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.])}, 'intellig': {'word_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]) ... })
+
+
+Weighter
+
+	weight_list:
+		defaultdict(<class 'int'>, {'publish': 0.05263157894736842, 'intellig': 0.05263157894736842, 'alan': 0.05263157894736842, 'comput': 0.10526315789473684, 'theoret': 0.05263157894736842, 'has': 0.05263157894736842, 'ture': 0.05263157894736842, 'articl': 0.05263157894736842, 'linguist': 0.05263157894736842, 'machineri': 0.05263157894736842, 'titl': 0.05263157894736842, 'appli': 0.05263157894736842, 'compon': 0.05263157894736842, 'in': 0.05263157894736842, 'NUM': 0.05263157894736842, 'an': 0.05263157894736842, 'and': 0.10526315789473684})
+
+Contexter
+
+	process_data:
+		{'publish': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'intellig': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]) ... }
 
