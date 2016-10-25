@@ -147,7 +147,7 @@ DataOptions:
 
 
 
-main.py commands:
+#main.py commands:
 * "sim word1 word2" similarity between two words
 * "top word" top 5 similar words
 * "info" information about the data
@@ -160,9 +160,10 @@ main.py commands:
 * "help" to display all commands
 
 
-Example output (from tester.py)
+#Example output (from tester.py)
 
-Text:
+Text
+
 		In 1950, Alan Turing published an article titled "Computing-Machinery and Intelligence". Computational linguistics has theoretical and applied components.
 
 
@@ -191,6 +192,6 @@ Weighter
 
 Contexter
 
-	process_data:
+	word_vectors:
 		{'publish': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'intellig': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]) ... }
 
