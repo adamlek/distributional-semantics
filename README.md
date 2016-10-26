@@ -16,18 +16,20 @@ Distributional Semantics with Random Indexing
 
 DataReader:
 
-	Reads data from .txt files and organizes them into sentences.
+    Reads data from .txt files and organizes them into sentence, creates a vocabulary and summarises word counts in each document.
 
-        PARAMS:
-            Numerize: NULL ATM (default: False)
+    INPUT:
+        preprocess_data: List of .txt files
+            sentencizer: Line of text
+            propernamer: list of strings
+            word_formatter: string
 
-        INPUT:
-            preprocess_data: List of .txt files
-		        sentencizer: Line of text
-		        word_formatter: string
+    OUTPUT:
+        preprocess_data: List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
+            sentencizer: list of sentences
+            propernamer: sentence
+            word_formatter: word
 
-        OUTPUT:
-            List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
 
 RandomVectorizer:
 
@@ -43,6 +45,7 @@ RandomVectorizer:
 
     OUTPUT:
         Dictionary of words in vocabulary with a word_vector and a random_vector
+
 
 Weighter:
 
@@ -151,7 +154,7 @@ DataOptions:
 
 
 
-#Example output (from tester.py)
+#Examples (from tester.py)
 
 Text
 
@@ -189,6 +192,67 @@ Contexter
 
 	word_vectors:
 		{'publish': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'intellig': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]) ... }
+
+ROUGH sketches of sentencizer / propernamer
+
+Sentencizer: 
+        
+	1. IF first symbol = lower, start append first symbol
+		FOR SYMBOL IN LINE:
+		2. if i+2 >= len(line):
+		start exists:
+			start has one entry => append start:end
+			start has +1 entries => check for proper names => append start:end
+	
+	3. if symbol is uppercase:
+		if symbols not followed by . (mrs., mr., sir. etc)
+		start append symbol
+	
+	4. if symbol is ., ? or !:
+		if i+2 is upper:
+		if i-2/3 is lower:
+		if start exists:
+			start has one try => append start:'.!?'
+			start has +1 entries => check for proper names => append start:'.!?'
+	
+	1.
+	In 1950, Alan Turing published an article titled "Computing-Machinery and Intelligence".
+	Sixteen years had Miss Taylor been in Mrs. Woodhouse's family and Emma likes it.
+	In New York City the lions live. 
+	=>
+	['In', 'NUM', 'PN', 'publish', 'an', 'articl', 'titl', 'Comput', 'Machineri', 'and', 'Intellig']
+	['Sixteen', 'year', 'had', 'PN', 'been', 'in', 'PN', 'famili', 'and', 'Emma', 'like', 'it']
+	['In', 'PN', 'the', 'lion', 'live']
+	
+	2.
+	The wedding was very much like other weddings, where the parties
+	have no taste for finery or parade; and Mrs. Elton, from the
+	particulars detailed by her husband, thought it all extremely shabby,
+	=>
+	['The', 'wed', 'was', 'veri', 'much', 'like', 'other', 'wed', 'where', 'the', 'parti']
+	['have', 'no', 'tast', 'for', 'fineri', 'or', 'parad', 'and', 'PN', 'from', 'the']
+	['particular', 'detail', 'by', 'her', 'husband', 'thought', 'it', 'all', 'extrem', 'shabbi']
+
+
+propernamer:
+	
+	input: [w1, w2, ... wn]
+
+	for w in input
+	skip w1
+		if w[0] is upper
+		w is not last word
+			if w+1[0] is upper
+			del w
+			del w+1
+			w+2 is not last word
+				if w+2[0] is upper
+				del w+2
+
+		insert PN at index of deleted w's
+	
+	
+
 
 
 #main.py commands:
