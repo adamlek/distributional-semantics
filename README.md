@@ -1,16 +1,18 @@
 # Distributional Semantics
 Distributional Semantics with Random Indexing
 
-Modules:
+
+#Modules
 * collections.defaultdict
 * re
 * random
 * math
-* sklearn.metrics.pairwise 
+* sklearn.metrics.pairwise
 * stemming.porter2.stem
 * numpy
 
-Classes:
+
+#Classes
 
 DataReader:
 
@@ -18,12 +20,12 @@ DataReader:
 
         PARAMS:
             Numerize: NULL ATM (default: False)
-        
+
         INPUT:
             preprocess_data: List of .txt files
 		        sentencizer: Line of text
 		        word_formatter: string
-                
+
         OUTPUT:
             List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
 
@@ -77,7 +79,9 @@ Weighter:
                 idf: string
 
     OUTPUT:
-        tf-idf weighted vector
+        weight: tf-idf weighted vector
+        weight_list: dict of weights
+
 
 Contexter:
 
@@ -97,14 +101,14 @@ Contexter:
         INIT:
             vocabulary of word vectors
             >>> dict{word: {word_vector: [word_vector], random_vector: [random_vector]}}
-            
+
         METHODS:
             process_data: sentences/text
                 read_contexts: sentence/text
                 vector_addition: string1, string2
 
     OUTPUT:
-        Dictionary of words in vocabulary with a updated word_vector
+        Dictionary of words in vocabulary with updated word_vector
 
 
 Similarity:
@@ -124,6 +128,7 @@ Similarity:
             top:
                 input: string
                 output: top 5 most cosine similar words
+
 
 DataOptions:
 
@@ -146,20 +151,6 @@ DataOptions:
 
 
 
-
-#main.py commands:
-* "sim word1 word2" similarity between two words
-* "top word" top 5 similar words
-* "info" information about the data
-* "info word" information about a word
-* "info -docs" info about the documents
-* "info -weight word" info about the weight of a word
-* "save name" save current data as "name"
-* "load name" to load saved data 
-* "set setting value" change value of context or window size
-* "help" to display all commands
-
-
 #Example output (from tester.py)
 
 Text
@@ -170,13 +161,13 @@ Text
 Datareader
 
 	sentences
-		[['in', 'NUM', 'alan', 'ture', 'publish', 'an', 'articl', 'titl', 'comput', 'machineri', 'and', 'intellig'], ['comput', 'linguist', 'has', 'theoret', 'and', 'appli', 'compon']] 
+		[['in', 'NUM', 'alan', 'ture', 'publish', 'an', 'articl', 'titl', 'comput', 'machineri', 'and', 'intellig'], ['comput', 'linguist', 'has', 'theoret', 'and', 'appli', 'compon']]
 
 	vocabulary:
-		['in', 'NUM', 'alan', 'ture', 'publish', 'an', 'articl', 'titl', 'comput', 'machineri', 'and', 'intellig', 'linguist', 'has', 'theoret', 'appli', 'compon'] vocabulary
+		['in', 'NUM', 'alan', 'ture', 'publish', 'an', 'articl', 'titl', 'comput', 'machineri', 'and', 'intellig', 'linguist', 'has', 'theoret', 'appli', 'compon']
 
 	documents:
-		defaultdict(<class 'dict'>, {'test_doc_5.txt': defaultdict(<class 'int'>, {'publish': 1, 'intellig': 1, 'alan': 1, 'comput': 2, 'theoret': 1, 'has': 1, 'ture': 1, 'articl': 1, 'linguist': 1, 'machineri': 1, 'titl': 1, 'appli': 1, 'compon': 1, 'in': 1, 'NUM': 1, 'an': 1, 'and': 2})}) documents
+		defaultdict(<class 'dict'>, {'test_doc_5.txt': defaultdict(<class 'int'>, {'publish': 1, 'intellig': 1, 'alan': 1, 'comput': 2, 'theoret': 1, 'has': 1, 'ture': 1, 'articl': 1, 'linguist': 1, 'machineri': 1, 'titl': 1, 'appli': 1, 'compon': 1, 'in': 1, 'NUM': 1, 'an': 1, 'and': 2})})
 
 
 RandomVectorizer
@@ -190,8 +181,22 @@ Weighter
 	weight_list:
 		defaultdict(<class 'int'>, {'publish': 0.05263157894736842, 'intellig': 0.05263157894736842, 'alan': 0.05263157894736842, 'comput': 0.10526315789473684, 'theoret': 0.05263157894736842, 'has': 0.05263157894736842, 'ture': 0.05263157894736842, 'articl': 0.05263157894736842, 'linguist': 0.05263157894736842, 'machineri': 0.05263157894736842, 'titl': 0.05263157894736842, 'appli': 0.05263157894736842, 'compon': 0.05263157894736842, 'in': 0.05263157894736842, 'NUM': 0.05263157894736842, 'an': 0.05263157894736842, 'and': 0.10526315789473684})
 
+
 Contexter
 
 	word_vectors:
 		{'publish': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'intellig': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]) ... }
+
+
+#main.py commands:
+* "sim word1 word2" similarity between two words
+* "top word" top 5 similar words
+* "info" information about the data
+* "info word" information about a word
+* "info -docs" info about the documents
+* "info -weight word" info about the weight of a word
+* "save name" save current data as "name"
+* "load name" to load saved data
+* "set setting value" change value of context or window size
+* "help" to display all commands
 
