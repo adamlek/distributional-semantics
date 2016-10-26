@@ -197,25 +197,54 @@ ROUGH sketches of sentencizer / propernamer
 
 Sentencizer: 
         
-	1. IF first symbol = lower, start append first symbol
-		FOR SYMBOL IN LINE:
-		2. if i+2 >= len(line):
-		start exists:
-			start has one entry => append start:end
-			start has +1 entries => check for proper names => append start:end
+	input: line of symbols
+	vars: start = [], sentences = [], addtolast = None
+
+	A) if line[0] == lower:
+		start += 0
+		addtolast = 0
+
+	B) for i, symbol in line:
+		B1) if i+2 >= len(line):
+			if start not empty: 
+				DO: sentences.append(start[0]:END)
+
+		B2) elif symbol is UPPER:
+			start += i
+
+		B3) elif symbol == . or ! or ?
+			if line[i+2] is UPPER:
+			if line[i-3:i-2] is lower
+			if start not empty: 
+				DO: sentences.append(start[0]:i)
+				DO: line = line[i+2:end]
+				DO: start = []
+
+	C) return sentences:
+			
+propernamer:
 	
-	3. if symbol is uppercase:
-		if symbols not followed by . (mrs., mr., sir. etc)
-		start append symbol
+	input: [w1, w2, ... wn]
+
+	A)	for w in input
+		skip w1
+		
+	B)	if w[0] is upper:
+		w, w+1 is not last word:
+		if w+1[0] is upper:
+			del w
+			del w+1
+			w+2 is not last word:
+				if w+2[0] is upper
+				del w+2
+
+		B1) insert PN at index of deleted w
+
+	C)	return
 	
-	4. if symbol is ., ? or !:
-		if i+2 is upper:
-		if i-2/3 is lower:
-		if start exists:
-			start has one try => append start:'.!?'
-			start has +1 entries => check for proper names => append start:'.!?'
-	
-	1.
+Output:
+
+	Text1:
 	In 1950, Alan Turing published an article titled "Computing-Machinery and Intelligence".
 
 	In New York City the lions live. 
@@ -224,33 +253,17 @@ Sentencizer:
 
 	['In', 'PN', 'the', 'lion', 'live']
 	
-	2.
+	Text2:
 	The wedding was very much like other weddings, where the parties
 	have no taste for finery or parade; and Mrs. Elton, from the
 	particulars detailed by her husband, thought it all extremely shabby,
 	=>
-	['The', 'wed', 'was', 'veri', 'much', 'like', 'other', 'wed', 'where', 'the', 'parti', 'have', 'no', 'tast', 'for', 'fineri', 'or', 'parad', 'and', 'PN', 'from', 'the', 'particular', 'detail', 'by', 'her', 'husband', 'thought', 'it', 'all', 'extrem', 'shabbi']	
+	['The', 'wed', 'was', 'veri', 'much', 'like', 'other', 'wed', 'where', 'the', 'parti', 
+	'have', 'no', 'tast', 'for', 'fineri', 'or', 'parad', 'and', 'PN', 'from', 'the', 'particular', 
+	'detail', 'by', 'her', 'husband', 'thought', 'it', 'all', 'extrem', 'shabbi']	
 
 
 
-propernamer:
-	
-	input: [w1, w2, ... wn]
-
-	for w in input
-	skip w1
-		if w[0] is upper
-		w is not last word
-			if w+1[0] is upper
-			del w
-			del w+1
-			w+2 is not last word
-				if w+2[0] is upper
-				del w+2
-
-		insert PN at index of deleted w's
-	
-	
 
 
 
