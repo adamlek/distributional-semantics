@@ -3,7 +3,8 @@
 Created on Mon Oct 17 22:21:38 2016
 @author: Adam Ek
 
-TODO Come up with some fucking good names?
+TODO Come up with some fucking good method/function names?
+
 TODO Check stemmer!!!
 TODO HANDLE: Proper names =>>> PN
 
@@ -59,12 +60,13 @@ class DataReader():
 
                     for line in datafile:
                         #< separate line into sentences
-                        sentences = self.sentencizer(line.rstrip())
-                        for sentence in sentences:
+                        sentences, conc = self.sentencizer(line.rstrip())
+                        for i, sentence in enumerate(sentences):
                             if sentence:
                                 formatted_sentence = []
                                 for word in sentence:
                                     #< format word
+                                    #< if self-preservation => self, preservation
                                     if '-' in word:
                                         words = word.split('-')
                                         for wordn in words:
@@ -76,10 +78,15 @@ class DataReader():
                                 while '' in formatted_sentence:
                                     formatted_sentence.remove('')
 
-                                sentences_collection.append(formatted_sentence)
+                                #< add sentence to last sentence
+                                if i == conc:
+                                    sentences_collection[-1] += formatted_sentence
+                                else:
+                                    sentences_collection.append(formatted_sentence)
+
                     print('Success!\n')
-#                doc_text.append(sentences_collection)                    
-                    
+#                doc_text.append(sentences_collection)
+
             except FileNotFoundError as fnfe:
                 print('FILE ERROR!\n {0}\n'.format(fnfe))
                 continue
@@ -89,11 +96,14 @@ class DataReader():
     #TODO fix sentences starting with lowercase, add to previous sentence!!!
     #< Create sentences from a line in a document
     def sentencizer(self, line):
+#        print(line)
         start_sent = []
         sentences = []
+        addtolast = None
 
         if line[0].islower():
             start_sent.append(0)
+            addtolast = 0
 
         #< iterate over the symbols
         if line:
@@ -101,39 +111,44 @@ class DataReader():
                 #< capture everything not captured, then break
                 if i+2 >= len(line):
                     if start_sent:
-                        if len(start_sent) == 1:
-                            sentences.append(line[start_sent[0]:].split())
-                        
-                        else:
-                            sentences.append(self.propernamer(line[start_sent[0]:].split()))
-                    else:                        
+#                        print('1')
+#                        print(start_sent)
+#                        print(line.split())
+                        sentences.append(self.propernamer(line[start_sent[0]:].split()))
+                    else:
+#                        print('1.1')
+#                        print(start_sent)
+#                        print(line.split())
                         sentences.append(line.split())
-                        
+
                     break
-        
+
                 #< add index of uppercase symbols
                 elif symbol.isupper():
                     if line[i:i+3] not in '.':
+#                        print(line[i], 'START')
                         start_sent.append(i)
-        
+
                 #< . ? or ! and i+2 isupper, sentence end
                 elif symbol == '.' or symbol == '?' or symbol == '!':
                     if i > 2:
                         if line[i+2].isupper():
-                            if line[i-3:i-2].islower():
+                            if line[i-3:i-2].islower(): #exclude Sir. Mr. Mrs. etc
                                 if start_sent:
+#                                    print('2')
+#                                    print(start_sent)
+#                                    print(line[start_sent[0]:i].split())
                                     if len(start_sent) == 1:
                                         sentences.append(line[start_sent[0]:i].split())
                                     else:
                                         sentences.append(self.propernamer(line[start_sent[0]:i].split()))
-                                
-                                line = line[i:]
-                                start_sent = []
-    
-        return sentences
-    
 
-#< line[start_sent[0]:i].split()
+
+                                line = line[i+2:]
+                                start_sent = []
+
+        return sentences, addtolast
+
     def propernamer(self, sent):
         for i, word in enumerate(sent):
             if i != 0:
@@ -145,10 +160,9 @@ class DataReader():
                             if i != len(sent):
                                 if sent[i][0].isupper():
                                     del sent[i]
-                                    
+
                             sent.insert(i, 'PN')
         return sent
-            
 
     #< Format words
     #< word: self-preservation => self preservation
@@ -157,7 +171,7 @@ class DataReader():
 
         if word == 'pn':
             word == 'PN'
-            
+
         #< remove special things inside words
         word = re.sub('[^A-ZÅÄÖa-zåäö0-9%]', '', word)
 
@@ -183,6 +197,7 @@ class DataReader():
             self.documents[self.current_doc][word] += 1
 
         return word
+
 
 #TODO: Add support to make classical word space models
 #- word-vector dimensionality, dimensionality reduction: SVD [after/in Contexter]
@@ -344,6 +359,7 @@ class Weighter():
 
         return inverse_df
 
+
 #< Read a list of sentences and apply vector addition from context
 #< vocabulary = dictionary of words with word_vector and random_vector
 #< context = 'CBOW' or 'skipgram', window = window size (default = 1)
@@ -462,6 +478,7 @@ class Contexter():
         else:
             pass #< what happens when nothing is return to word_vec?????
 
+
 class Similarity():
     """
     Cosine similarities between vectors
@@ -546,6 +563,7 @@ class Similarity():
                 top[4][0:] = cs, target_word
 
         return(top)
+
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 class DataOptions():
