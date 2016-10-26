@@ -3,6 +3,7 @@
 Created on Mon Oct 17 22:21:38 2016
 @author: Adam Ek
 
+TODO Come up with some fucking good names?
 TODO Check stemmer!!!
 TODO HANDLE: Proper names =>>> PN
 
@@ -24,18 +25,19 @@ import math
 
 class DataReader():
     """
-    Reads data from .txt files and organizes them into sentences.
-
-    PARAMS:
-        Numerize: Not us use (default: False)
+    Reads data from .txt files and organizes them into sentence, creates a vocabulary and summarises word counts in each document.
 
     INPUT:
         preprocess_data: List of .txt files
             sentencizer: Line of text
+            propernamer: Line of text
             word_formatter: string
 
     OUTPUT:
-        List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
+        preprocess_data: List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
+            sentencizer: list of sentences
+            propernamer: sentence
+            word_formatter: word
     """
     def __init__(self):
         self.vocabulary = []
@@ -45,6 +47,7 @@ class DataReader():
     #< By default create vectors from data
     def preprocess_data(self, filenames, numerize = False):
         sentences_collection = []
+#        doc_text = []
 
         for filename in filenames:
             try:
@@ -56,7 +59,7 @@ class DataReader():
 
                     for line in datafile:
                         #< separate line into sentences
-                        sentences = self.sentencizer(line)
+                        sentences = self.sentencizer(line.rstrip())
                         for sentence in sentences:
                             if sentence:
                                 formatted_sentence = []
@@ -65,17 +68,18 @@ class DataReader():
                                     if '-' in word:
                                         words = word.split('-')
                                         for wordn in words:
-                                            formatted_sentence.append(self.word_formatter(wordn.lower()))
+                                            formatted_sentence.append(self.word_formatter(wordn))
                                         continue
 
-                                    formatted_sentence.append(self.word_formatter(word.lower()))
+                                    formatted_sentence.append(self.word_formatter(word))
 
                                 while '' in formatted_sentence:
                                     formatted_sentence.remove('')
 
                                 sentences_collection.append(formatted_sentence)
                     print('Success!\n')
-
+#                doc_text.append(sentences_collection)                    
+                    
             except FileNotFoundError as fnfe:
                 print('FILE ERROR!\n {0}\n'.format(fnfe))
                 continue
@@ -86,33 +90,75 @@ class DataReader():
     def sentencizer(self, line):
         start_sent = []
         sentences = []
+
+        if line[0].islower():
+            start_sent.append(0)
+
         #< iterate over the symbols
-        for i, symbol in enumerate(line):
-
-            #< capture everything not captured, then break
-            if i+2 >= len(line):
-                sentences.append(line[start_sent[0]:].split())
-                break
-
-            #< add index of uppercase symbols
-            elif symbol.isupper():
-                if line[i+1] != '.' and line[i+1].islower():
-                    start_sent.append(i)
-
-            #< . ? or ! and i+2 isupper, sentence end
-            elif symbol == '.' or symbol == '?' or symbol == '!':
-                if line[i+2].isupper():
-                    sentences.append(line[start_sent[0]:i].split())
-                    start_sent = []
-
+        if line:
+            for i, symbol in enumerate(line):
+                #< capture everything not captured, then break
+                if i+2 >= len(line):
+                    if start_sent:
+                        if len(start_sent) == 1:
+                            sentences.append(line[start_sent[0]:].split())
+                        
+                        else:
+                            sentences.append(self.propernamer(line[start_sent[0]:].split()))
+                    else:                        
+                        sentences.append(line.split())
+                        
+                    break
+        
+                #< add index of uppercase symbols
+                elif symbol.isupper():
+                    if line[i:i+3] not in '.':
+                        start_sent.append(i)
+        
+                #< . ? or ! and i+2 isupper, sentence end
+                elif symbol == '.' or symbol == '?' or symbol == '!':
+                    if i > 2:
+                        if line[i+2].isupper():
+                            if line[i-3:i-2].islower():
+                                if start_sent:
+                                    if len(start_sent) == 1:
+                                        sentences.append(line[start_sent[0]:i].split())
+                                    else:
+                                        sentences.append(self.propernamer(line[start_sent[0]:i].split()))
+                                
+                                line = line[i:]
+                                start_sent = []
+    
         return sentences
+    
+
+#< line[start_sent[0]:i].split()
+    def propernamer(self, sent):
+        for i, word in enumerate(sent):
+            if i != 0:
+                if word[0].isupper():
+                    if i+1 != len(sent):
+                        if sent[i+1][0].isupper():
+                            del sent[i]
+                            del sent[i]
+                            if i != len(sent):
+                                if sent[i][0].isupper():
+                                    del sent[i]
+                                    
+                            sent.insert(i, 'PN')
+        return sent
+            
 
     #< Format words
     #< word: self-preservation => self preservation
     #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
     def word_formatter(self, word):
+
+        if word == 'pn':
+            word == 'PN'
+            
         #< remove special things inside words
-        word = re.sub('[^a-zåäö0-9%]', '', word)
+        word = re.sub('[^A-ZÅÄÖa-zåäö0-9%]', '', word)
 
         #< stem and replace word
         word = stem(word)
@@ -253,7 +299,6 @@ class Weighter():
         return vector * weight
 
     def weight_list(self, wordlist):
-        weight_dict = defaultdict(float)
         for word in wordlist:
             weight = self.tf(word)
             if self.documents_n > 1:
@@ -587,7 +632,3 @@ class DataOptions():
 
         else:
             print('No data loaded!')
-
-class data_formatter():
-    def __init__():
-        pass
