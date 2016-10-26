@@ -217,11 +217,11 @@ Sentencizer:
 	
 	1.
 	In 1950, Alan Turing published an article titled "Computing-Machinery and Intelligence".
-	Sixteen years had Miss Taylor been in Mrs. Woodhouse's family and Emma likes it.
+
 	In New York City the lions live. 
 	=>
 	['In', 'NUM', 'PN', 'publish', 'an', 'articl', 'titl', 'Comput', 'Machineri', 'and', 'Intellig']
-	['Sixteen', 'year', 'had', 'PN', 'been', 'in', 'PN', 'famili', 'and', 'Emma', 'like', 'it']
+
 	['In', 'PN', 'the', 'lion', 'live']
 	
 	2.
@@ -229,9 +229,8 @@ Sentencizer:
 	have no taste for finery or parade; and Mrs. Elton, from the
 	particulars detailed by her husband, thought it all extremely shabby,
 	=>
-	['The', 'wed', 'was', 'veri', 'much', 'like', 'other', 'wed', 'where', 'the', 'parti']
-	['have', 'no', 'tast', 'for', 'fineri', 'or', 'parad', 'and', 'PN', 'from', 'the']
-	['particular', 'detail', 'by', 'her', 'husband', 'thought', 'it', 'all', 'extrem', 'shabbi']
+	['The', 'wed', 'was', 'veri', 'much', 'like', 'other', 'wed', 'where', 'the', 'parti', 'have', 'no', 'tast', 'for', 'fineri', 'or', 'parad', 'and', 'PN', 'from', 'the', 'particular', 'detail', 'by', 'her', 'husband', 'thought', 'it', 'all', 'extrem', 'shabbi']	
+
 
 
 propernamer:
