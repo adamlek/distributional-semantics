@@ -86,6 +86,7 @@ class DataReader():
 
         return sentences_collection, self.vocabulary, self.documents
 
+    #TODO fix sentences starting with lowercase, add to previous sentence!!!
     #< Create sentences from a line in a document
     def sentencizer(self, line):
         start_sent = []
