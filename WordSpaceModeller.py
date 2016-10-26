@@ -3,6 +3,12 @@
 Created on Mon Oct 17 22:21:38 2016
 @author: Adam Ek
 
+TODO Check stemmer!!!
+TODO HANDLE: Proper names =>>> PN
+
+TODO: distance weights, WHAT WEIGHTS!?
+    Ideas?
+
 MAJOR:
 add support for LSA/HAL/neural networks
 
@@ -49,13 +55,13 @@ class DataReader():
                     self.documents[filen.group(2)] = defaultdict(int)
 
                     for line in datafile:
-                        #< separate row into sentences
+                        #< separate line into sentences
                         sentences = self.sentencizer(line)
                         for sentence in sentences:
                             if sentence:
                                 formatted_sentence = []
                                 for word in sentence:
-
+                                    #< format word
                                     if '-' in word:
                                         words = word.split('-')
                                         for wordn in words:
@@ -80,17 +86,20 @@ class DataReader():
     def sentencizer(self, line):
         start_sent = []
         sentences = []
-
+        #< iterate over the symbols
         for i, symbol in enumerate(line):
 
+            #< capture everything not captured, then break
             if i+2 >= len(line):
                 sentences.append(line[start_sent[0]:].split())
                 break
 
+            #< add index of uppercase symbols
             elif symbol.isupper():
                 if line[i+1] != '.' and line[i+1].islower():
                     start_sent.append(i)
 
+            #< . ? or ! and i+2 isupper, sentence end
             elif symbol == '.' or symbol == '?' or symbol == '!':
                 if line[i+2].isupper():
                     sentences.append(line[start_sent[0]:i].split())
@@ -207,7 +216,8 @@ class Weighter():
                 idf: string
 
     OUTPUT:
-        tf-idf weighted vector
+        weight: tf-idf weighted vector
+        weight_list: dict of weights
     """
     def __init__(self, document_dict, scheme = 0, smooth_idf = False, doidf = True):
         self.document_dict = document_dict
