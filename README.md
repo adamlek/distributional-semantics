@@ -11,6 +11,10 @@ Distributional Semantics with Random Indexing
 * stemming.porter2.stem
 * numpy
 
+#Usage
+Sample usage can be found is tester.py
+
+main.py contains a terminal interface for WordSpaceModeller.py
 
 #Classes
 
@@ -206,7 +210,7 @@ Contexter
 	word_vectors:
 		{'publish': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'intellig': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]) ... }
 
-ROUGH sketches of sentencizer / propernamer
+#sketches of sentencizer / propernamer
 
 Sentencizer: 
         
@@ -277,13 +281,13 @@ Output:
 	'detail', 'by', 'her', 'husband', 'thought', 'it', 'all', 'extrem', 'shabbi']	
 
 	Text3 (Wikipedia):
-	Australia Australian applied linguistics took as its target the applied linguistics of mother tongue teaching and teaching English to immigrants. The Australia tradition shows a strong influence of continental Europe and of the USA, rather than of Britain. Applied Linguistics Association of Australia (ALAA) was established at a national congress of applied linguists held in August 1976. ALAA holds a joint annual conference in collaboration with the Association for Applied Linguistics in New Zealand (ALANZ).
+	Australia Australian applied linguistics took as its target the applied linguistics of mother tongue teaching and teaching English to immigrants. 
+	The Australia tradition shows a strong influence of continental Europe and of the USA, rather than of Britain. 
+	Applied Linguistics Association of Australia (ALAA) was established at a national congress of applied linguists held in August 1976. ALAA holds a joint annual conference in collaboration with the Association for Applied Linguistics in New Zealand (ALANZ).
 	=>
 	['australia', 'australian', 'appli', 'linguist', 'took', 'as', 'it', 'target', 'the', 'appli', 'linguist', 'of', 'mother', 'tongu', 'teach', 'and', 'teach', 'english', 'to', 'immigr']
 	['the', 'australia', 'tradit', 'show', 'a', 'strong', 'influenc', 'of', 'continent', 'europ', 'and', 'of', 'the', 'USA', 'rather', 'than', 'of', 'britain']
 	['appli', 'PN', 'of', 'australia', 'ALAA', 'was', 'establish', 'at', 'a', 'nation', 'congress', 'of', 'appli', 'linguist', 'held', 'in', 'august', 'NUM', 'ALAA', 'hold', 'a', 'joint', 'annual', 'confer', 'in', 'collabor', 'with', 'the', 'associat', 'for', 'PN', 'in', 'PN', 'ALANZ']
-
-
 
 
 #main.py commands:
