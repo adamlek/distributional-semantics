@@ -112,7 +112,6 @@ class DataReader():
     #TODO fix option to apply PN to propernames
     #< Create sentences from a line in a document
     def sentencizer(self, line):
-        print(line)
         start_sent = []
         sentences = []
         addtolast = None
@@ -155,10 +154,8 @@ class DataReader():
                                         sentences.append(self.propernamer(line[start_sent[0]:i].split()))
                                     else:
                                         sentences.append(line[start_sent[0]:i].split())
-
                                 start_sent = []
 
-        print(sentences)
         return sentences, addtolast
 
     def propernamer(self, sent):
@@ -421,8 +418,8 @@ class Contexter():
         self.distance_weights = distance_weights #TODO add weighting at self.word_addition
         self.sentences = sentences
 #        self.history = [] #< ??? history of vector additions, for later use (updating data) NOT IN USE ATM
-        if weights != False:
-            self.weights = weights
+
+        self.weights = weights
 
         self.data_info = {'name': 'Temporary data','context': self.contexttype,'window': self.window, 'weights': 'tf-idf'} #< finetune
 
@@ -611,7 +608,7 @@ class DataOptions():
         input: optional(string, -weight string, -docs)
         output: info about data or word if supplied
     """
-    def __init__(self, vocabulary = None, documents = None, data_info = None, weight_setup = None):
+    def __init__(self, vocabulary = [], documents = defaultdict(dict), data_info = defaultdict(str), weight_setup = None):
         self.vocabulary = vocabulary
         self.documents = documents
         self.data_info = data_info
