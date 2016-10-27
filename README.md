@@ -17,11 +17,21 @@ Distributional Semantics with Random Indexing
 DataReader:
 
     Reads data from .txt files and organizes them into sentence, creates a vocabulary and summarises word counts in each document.
+    Categorizations:
+        1, 1.2, 1/3, 1950 => NUM
+        1%, 1.33% => PERC
+        Jesus Christ, New York City => PN [Very aggressive/rough]
+
+    PARAMS:
+        preprocess_data:
+            pns: convert propernames to PN (default: True)
+            nums: convert numbers to NUM (default: True)
+            percs: convert percentages to PERC (default: True)
 
     INPUT:
         preprocess_data: List of .txt files
             sentencizer: Line of text
-            propernamer: list of strings
+            propernamer: Line of text
             word_formatter: string
 
     OUTPUT:
@@ -89,6 +99,7 @@ Weighter:
 Contexter:
 
     Reads sentences/text and determines a words context, then performs vector addition.
+    Takes pre-weighted vectors
 
     Contexter.data_info to get the data_info
 
@@ -97,8 +108,8 @@ Contexter:
         window: size of context, CBOW: how many words to take, skipgram: how many words to skip (default: 1)
         sentences: set context boundry at sentence boundaries (default: True)
         distance_weights: give weights to words based on distance (default: False) TODO TODO TODO
-		weights: do weighting in this class
-			>>> dict{word: weight}
+        weights: do weighting in this class
+            >>> dict{word: weight}
 
     INPUT:
         INIT:
@@ -107,11 +118,13 @@ Contexter:
 
         METHODS:
             process_data: sentences/text
-                read_contexts: sentence/text
+                read_contexts: sentence/text or list of sentences
                 vector_addition: string1, string2
 
     OUTPUT:
-        Dictionary of words in vocabulary with updated word_vector
+        process_data: dictionary of {word: updated word_vectors}
+        read_contexts: dictionary of {word: [words in context]}
+        vectors_addition: word_vector
 
 
 Similarity:
@@ -243,8 +256,9 @@ propernamer:
 	C)	return
 	
 Output:
+	With Proper Names = PN, numbers = NUMS and percentages = PERC
 
-	Text1:
+	Text1(Wikipedia):
 	In 1950, Alan Turing published an article titled "Computing-Machinery and Intelligence".
 
 	In New York City the lions live. 
@@ -253,7 +267,7 @@ Output:
 
 	['In', 'PN', 'the', 'lion', 'live']
 	
-	Text2:
+	Text2(Jane Austen - Emma):
 	The wedding was very much like other weddings, where the parties
 	have no taste for finery or parade; and Mrs. Elton, from the
 	particulars detailed by her husband, thought it all extremely shabby,
@@ -262,7 +276,12 @@ Output:
 	'have', 'no', 'tast', 'for', 'fineri', 'or', 'parad', 'and', 'PN', 'from', 'the', 'particular', 
 	'detail', 'by', 'her', 'husband', 'thought', 'it', 'all', 'extrem', 'shabbi']	
 
-
+	Text3 (Wikipedia):
+	Australia Australian applied linguistics took as its target the applied linguistics of mother tongue teaching and teaching English to immigrants. The Australia tradition shows a strong influence of continental Europe and of the USA, rather than of Britain. Applied Linguistics Association of Australia (ALAA) was established at a national congress of applied linguists held in August 1976. ALAA holds a joint annual conference in collaboration with the Association for Applied Linguistics in New Zealand (ALANZ).
+	=>
+	['australia', 'australian', 'appli', 'linguist', 'took', 'as', 'it', 'target', 'the', 'appli', 'linguist', 'of', 'mother', 'tongu', 'teach', 'and', 'teach', 'english', 'to', 'immigr']
+	['the', 'australia', 'tradit', 'show', 'a', 'strong', 'influenc', 'of', 'continent', 'europ', 'and', 'of', 'the', 'USA', 'rather', 'than', 'of', 'britain']
+	['appli', 'PN', 'of', 'australia', 'ALAA', 'was', 'establish', 'at', 'a', 'nation', 'congress', 'of', 'appli', 'linguist', 'held', 'in', 'august', 'NUM', 'ALAA', 'hold', 'a', 'joint', 'annual', 'confer', 'in', 'collabor', 'with', 'the', 'associat', 'for', 'PN', 'in', 'PN', 'ALANZ']
 
 
 
