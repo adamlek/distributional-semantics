@@ -27,6 +27,16 @@ import math
 class DataReader():
     """
     Reads data from .txt files and organizes them into sentence, creates a vocabulary and summarises word counts in each document.
+    Categorizations:
+        1, 1.2, 1/3, 1950 => NUM
+        1%, 1.33% => PERC
+        Jesus Christ, New York City => PN [Very aggressive/rough]
+
+    PARAMS:
+        preprocess_data:
+            pns: convert propernames to PN (default: True)
+            nums: convert numbers to NUM (default: True)
+            percs: convert percentages to PERC (default: True)
 
     INPUT:
         preprocess_data: List of .txt files
@@ -44,9 +54,13 @@ class DataReader():
         self.vocabulary = []
         self.documents = defaultdict(dict)
         self.current_doc = ""
+        self.pns = True
+        self.nums = True
+        self.percs = True
 
     #< By default create vectors from data
-    def preprocess_data(self, filenames, numerize = False):
+    def preprocess_data(self, filenames, pns = True, nums = True, perc = True):
+        self.pns, self.nums, self.percs = pns, nums, perc
         sentences_collection = []
 #        doc_text = []
 
@@ -54,11 +68,13 @@ class DataReader():
             try:
                 with open(filename) as datafile:
                     print('Reading file {0}...'.format(filename))
+                    #< Add dictionary entry with name = filename
                     filen = re.search('(\/+.+\/)(.*.txt)', filename)
                     self.current_doc = filen.group(2)
                     self.documents[filen.group(2)] = defaultdict(int)
 
                     for line in datafile:
+#                        line = re.sub('(\[\d+\])', '', line)
                         #< separate line into sentences
                         sentences, conc = self.sentencizer(line.rstrip())
                         for i, sentence in enumerate(sentences):
@@ -95,22 +111,20 @@ class DataReader():
 
     #TODO fix option to apply PN to propernames
     #< Create sentences from a line in a document
-    def sentencizer(self, line, propernamer=True):
-#        print(line)
+    def sentencizer(self, line):
+        print(line)
         start_sent = []
         sentences = []
         addtolast = None
-
-        if line[0].islower():
-            start_sent.append(0)
-            addtolast = 0
-
-        #< iterate over the symbols
         if line:
+            if line[0].islower():
+                start_sent.append(0)
+                addtolast = 0
+
             for i, symbol in enumerate(line):
                 #< capture everything not captured, then break
                 if i+2 >= len(line):
-                    if start_sent:
+                    if self.pns:
 #                        print('1')
 #                        print(start_sent)
 #                        print(line.split())
@@ -120,7 +134,6 @@ class DataReader():
 #                        print(start_sent)
 #                        print(line.split())
                         sentences.append(line.split())
-
                     break
 
                 #< add index of uppercase symbols
@@ -138,14 +151,14 @@ class DataReader():
 #                                    print('2')
 #                                    print(start_sent)
 #                                    print(line[start_sent[0]:i].split())
-                                    if len(start_sent) == 1:
-                                        sentences.append(line[start_sent[0]:i].split())
-                                    else:
+                                    if self.pns:
                                         sentences.append(self.propernamer(line[start_sent[0]:i].split()))
+                                    else:
+                                        sentences.append(line[start_sent[0]:i].split())
 
-                                line = line[i+2:]
                                 start_sent = []
 
+        print(sentences)
         return sentences, addtolast
 
     def propernamer(self, sent):
@@ -168,9 +181,6 @@ class DataReader():
     #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
     def word_formatter(self, word):
 
-        if word == 'pn':
-            word == 'PN'
-
         #TODO 1950s, 13th
         #< remove special things inside words
         word = re.sub('[^A-ZÅÄÖa-zåäö0-9%]', '', word)
@@ -184,11 +194,17 @@ class DataReader():
 
         #< FINE TUNE DATA
         #< change numbers to NUM
-        if word.isdigit():
-            word = 'NUM'
+
+        if self.nums:
+            if word.isdigit():
+                word = 'NUM'
         #< 12% etc => PERC
-        elif '%' in word:
-            word = 'PERC'
+        if self.percs:
+            if '%' in word:
+                word = 'PERC'
+
+        if not word.isupper():
+            word = word.lower()
 
         if word not in self.vocabulary:
             self.vocabulary.append(word)
@@ -385,11 +401,13 @@ class Contexter():
 
         METHODS:
             process_data: sentences/text
-                read_contexts: sentence/text
+                read_contexts: sentence/text or list of sentences
                 vector_addition: string1, string2
 
     OUTPUT:
-        Dictionary of words in vocabulary with a updated word_vector
+        process_data: dictionary of {word: updated word_vectors}
+        read_contexts: dictionary of {word: [words in context]}
+        vectors_addition: word_vector
     """
     def __init__(self, vocabulary, contexttype = 'CBOW', window = 1, sentences = True, distance_weights = False, weights = False):
         self.vocabulary = vocabulary
@@ -435,37 +453,45 @@ class Contexter():
 
         return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
 
+    #< only requires text, will always output contexts of every word
     def read_contexts(self, context_text):
         word_contexts = defaultdict(list)
-        for i, word in enumerate(context_text):
-            context = []
-
-            if self.contexttype == 'CBOW':
-                #words before
-                if (i-self.window) <= 0:
-                    context += context_text[:i]
-                else:
-                    context += context_text[i-self.window:i]
-                #< words after
-                if (i+self.window) >= len(context_text):
-                    context += context_text[i+1:]
-                else:
-                    context += context_text[i+1:i+1+self.window]
-
-            elif self.contexttype == 'skipgram':
-                #word before
-                if (i-self.window-1) < 0:
-                    pass
-                else:
-                    context.append(context_text[i-self.window-1])
-                #< words after
-                if (i+self.window+1) >= len(context_text):
-                    pass
-                else:
-                    context.append(context_text[i+1+self.window])
-
-            if context:
-                word_contexts[word] = context
+        for i, item in enumerate(context_text):
+            
+            if type(item) is list:
+                cont = self.read_contexts(item)
+                for word in cont:
+                    word_contexts[word] += cont[word]
+            
+            else:
+                context = []
+    
+                if self.contexttype == 'CBOW':
+                    #words before
+                    if (i-self.window) <= 0:
+                        context += context_text[:i]
+                    else:
+                        context += context_text[i-self.window:i]
+                    #< words after
+                    if (i+self.window) >= len(context_text):
+                        context += context_text[i+1:]
+                    else:
+                        context += context_text[i+1:i+1+self.window]
+    
+                elif self.contexttype == 'skipgram':
+                    #word before
+                    if (i-self.window-1) < 0:
+                        pass
+                    else:
+                        context.append(context_text[i-self.window-1])
+                    #< words after
+                    if (i+self.window+1) >= len(context_text):
+                        pass
+                    else:
+                        context.append(context_text[i+1+self.window])
+    
+                if context:
+                    word_contexts[item] = context
 
         return word_contexts
 
@@ -475,7 +501,7 @@ class Contexter():
                 return self.vocabulary[word]['word_vector'] + (self.vocabulary[target_word]['random_vector'] * self.weights[word])
             else:
                 return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
-        else:
+        else: #TODO check for words that does not exist
             return self.vocabulary[word]['word_vector']#< what happens when nothing is return to word_vec?????
 
 
