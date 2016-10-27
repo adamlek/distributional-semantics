@@ -93,9 +93,9 @@ class DataReader():
 
         return sentences_collection, self.vocabulary, self.documents
 
-    #TODO fix sentences starting with lowercase, add to previous sentence!!!
+    #TODO fix option to apply PN to propernames
     #< Create sentences from a line in a document
-    def sentencizer(self, line):
+    def sentencizer(self, line, propernamer=True):
 #        print(line)
         start_sent = []
         sentences = []
@@ -125,9 +125,9 @@ class DataReader():
 
                 #< add index of uppercase symbols
                 elif symbol.isupper():
-                    if line[i:i+3] not in '.':
+#                    if line[i:i+3] not in '.':
 #                        print(line[i], 'START')
-                        start_sent.append(i)
+                    start_sent.append(i)
 
                 #< . ? or ! and i+2 isupper, sentence end
                 elif symbol == '.' or symbol == '?' or symbol == '!':
@@ -142,7 +142,6 @@ class DataReader():
                                         sentences.append(line[start_sent[0]:i].split())
                                     else:
                                         sentences.append(self.propernamer(line[start_sent[0]:i].split()))
-
 
                                 line = line[i+2:]
                                 start_sent = []
@@ -172,6 +171,7 @@ class DataReader():
         if word == 'pn':
             word == 'PN'
 
+        #TODO 1950s, 13th
         #< remove special things inside words
         word = re.sub('[^A-ZÅÄÖa-zåäö0-9%]', '', word)
 
@@ -476,7 +476,7 @@ class Contexter():
             else:
                 return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
         else:
-            pass #< what happens when nothing is return to word_vec?????
+            return self.vocabulary[word]['word_vector']#< what happens when nothing is return to word_vec?????
 
 
 class Similarity():
