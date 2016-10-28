@@ -112,6 +112,7 @@ class DataReader():
     #TODO fix option to apply PN to propernames
     #< Create sentences from a line in a document
     def sentencizer(self, line):
+
         start_sent = []
         sentences = []
         addtolast = None
@@ -124,60 +125,50 @@ class DataReader():
                 #< capture everything not captured, then break
                 if i+2 >= len(line):
                     if self.pns:
-#                        print('1')
-#                        print(start_sent)
-#                        print(line.split())
                         sentences.append(self.propernamer(line[start_sent[0]:].split()))
                     else:
-#                        print('1.1')
-#                        print(start_sent)
-#                        print(line.split())
                         sentences.append(line.split())
                     break
 
                 #< add index of uppercase symbols
                 elif symbol.isupper():
-#                    if line[i:i+3] not in '.':
-#                        print(line[i], 'START')
+
                     start_sent.append(i)
 
                 #< . ? or ! and i+2 isupper, sentence end
                 elif symbol == '.' or symbol == '?' or symbol == '!':
                     if i > 2:
                         if line[i+2].isupper():
-                            if line[i-3:i-2].islower(): #exclude Sir. Mr. Mrs. etc
+                            #< needs some fixing/finetuning
+                            if line[i-3:i-2].islower() or line[i-3:i-2].isdigit(): #exclude Sir. Mr. Mrs. etc
                                 if start_sent:
-#                                    print('2')
-#                                    print(start_sent)
-#                                    print(line[start_sent[0]:i].split())
                                     if self.pns:
                                         sentences.append(self.propernamer(line[start_sent[0]:i].split()))
                                     else:
                                         sentences.append(line[start_sent[0]:i].split())
-                                start_sent = []
+                                start_sent = [i+1]
 
         return sentences, addtolast
 
     def propernamer(self, sent):
         for i, word in enumerate(sent):
-            if i != 0:
-                if word[0].isupper():
-                    if i+1 != len(sent):
-                        if sent[i+1][0].isupper():
-                            del sent[i]
-                            del sent[i]
-                            if i != len(sent):
-                                if sent[i][0].isupper():
-                                    del sent[i]
+#            if i != 0: #< Do not check first word. "All Adams are something." => "PN are something."
+            if word[0].isupper():
+                if i+1 != len(sent):
+                    if sent[i+1][0].isupper():
+                        del sent[i]
+                        del sent[i]
+                        if i != len(sent):
+                            if sent[i][0].isupper():
+                                del sent[i]
 
-                            sent.insert(i, 'PN')
+                        sent.insert(i, 'PN')
         return sent
 
     #< Format words
     #< word: self-preservation => self preservation
     #< nums: 5-6 => 56 => NUM, 3.1223 => 31223 => NUM
     def word_formatter(self, word):
-
         #TODO 1950s, 13th
         #< remove special things inside words
         word = re.sub('[^A-ZÅÄÖa-zåäö0-9%]', '', word)
@@ -190,8 +181,6 @@ class DataReader():
             return ''
 
         #< FINE TUNE DATA
-        #< change numbers to NUM
-
         if self.nums:
             if word.isdigit():
                 word = 'NUM'
@@ -454,15 +443,15 @@ class Contexter():
     def read_contexts(self, context_text):
         word_contexts = defaultdict(list)
         for i, item in enumerate(context_text):
-            
+
             if type(item) is list:
                 cont = self.read_contexts(item)
                 for word in cont:
                     word_contexts[word] += cont[word]
-            
+
             else:
                 context = []
-    
+
                 if self.contexttype == 'CBOW':
                     #words before
                     if (i-self.window) <= 0:
@@ -474,7 +463,7 @@ class Contexter():
                         context += context_text[i+1:]
                     else:
                         context += context_text[i+1:i+1+self.window]
-    
+
                 elif self.contexttype == 'skipgram':
                     #word before
                     if (i-self.window-1) < 0:
@@ -486,7 +475,7 @@ class Contexter():
                         pass
                     else:
                         context.append(context_text[i+1+self.window])
-    
+
                 if context:
                     word_contexts[item] = context
 
