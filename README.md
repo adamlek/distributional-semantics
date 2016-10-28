@@ -3,6 +3,7 @@ Distributional Semantics with Random Indexing
 
 
 #Modules
+WordSpaceModeller.py
 * collections.defaultdict
 * re
 * random
@@ -10,6 +11,10 @@ Distributional Semantics with Random Indexing
 * sklearn.metrics.pairwise
 * stemming.porter2.stem
 * numpy
+
+tester.py
+* tsne (https://lvdmaaten.github.io/tsne/), modified by me for python 3.5.2
+* matplotlib.pyplot
 
 #Usage
 Sample usage can be found is tester.py
