@@ -42,13 +42,12 @@ class DataReader():
         self.vocabulary = []
         self.documents = defaultdict(dict)
         self.current_doc = ""
-        self.pns = True
+        self.pns = False
         self.nums = True
         self.percs = True
-        self.keepacr = True
 
     #< By default create vectors from data
-    def preprocess_data(self, filenames, pns = True, nums = True, perc = True):
+    def preprocess_data(self, filenames, pns = False, nums = True, perc = True):
         """
         input: List of .txt files, params
         output: List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
@@ -80,7 +79,7 @@ class DataReader():
                                         words = word.split('-')
                                         for wordn in words:
                                             formatted_sentence.append(self.word_formatter(wordn))
-                                        continue                            
+                                        continue
                                     formatted_sentence.append(self.word_formatter(word))
 
                                 while '' in formatted_sentence:
@@ -120,14 +119,16 @@ class DataReader():
                 #< capture everything not captured, then break
                 if i+2 >= len(line):
                     if self.pns:
-                        sentences.append(self.propernamer(line[start_sent[0]:].split()))
+                        if start_sent:
+                            sentences.append(self.propernamer(line[start_sent[0]:].split()))
+                        else:
+                            sentences.append(line.split())
                     else:
                         sentences.append(line.split())
                     break
 
                 #< add index of uppercase symbols
                 elif symbol.isupper():
-
                     start_sent.append(i)
 
                 #< . ? or ! and i+2 isupper, sentence end
@@ -141,7 +142,7 @@ class DataReader():
                                         sentences.append(self.propernamer(line[start_sent[0]:i].split()))
                                     else:
                                         sentences.append(line[start_sent[0]:i].split())
-                                start_sent = [i+1]
+                                start_sent = []
 
         return sentences, addtolast
 
@@ -151,17 +152,17 @@ class DataReader():
         output: list of strings
         """
         for i, word in enumerate(sent):
-#            if i != 0: #< Do not check first word. "All Adams are something." => "PN are something."
-            if word[0].isupper():
-                if i+1 != len(sent):
-                    if sent[i+1][0].isupper():
-                        del sent[i]
-                        del sent[i]
-                        if i != len(sent):
-                            if sent[i][0].isupper():
-                                del sent[i]
+            if i != 0: #< Do not check first word. "All Adams are something." => "PN are something."
+                if word[0].isupper():
+                    if i+1 != len(sent):
+                        if sent[i+1][0].isupper():
+                            del sent[i]
+                            del sent[i]
+                            if i != len(sent):
+                                if sent[i][0].isupper():
+                                    del sent[i]
 
-                        sent.insert(i, 'PN')
+                            sent.insert(i, 'PN')
         return sent
 
     #< Format words
@@ -256,10 +257,10 @@ class Weighter():
 
         scheme 0: standard
             freq/doc_freq * log(N/n)
-    
+
         scheme 1: log normalization
             1 + log10(freq/doc_freq) * log(N/n)
-    
+
         scheme 2: double normalization
             0.5 + (0.5 * ((freq/doc_freq)/(max_freq*(max_freq/doc_freq)))) * log(N/n)
 
@@ -313,8 +314,8 @@ class Weighter():
         output: dict{word: {word_vector:[], random_vector:[]}}
         """
         for word in vocab:
-            self.weight_vector(word, vocab[word]['random_vector'])
-        
+            vocab[word]['random_vector'] = self.weight_vector(word, vocab[word]['random_vector'])
+
         return vocab
 
     def weight_vector(self, word, vector):
@@ -418,7 +419,7 @@ class Contexter():
             self.contexttype = contexttype
         else:
             self.contexttype = 'CBOW'
-            
+
         self.distance_weights = distance_weights #TODO add weighting at self.word_addition
         self.sentences = sentences
 
@@ -426,18 +427,26 @@ class Contexter():
 
         self.data_info = {'name': 'Temporary data','context': self.contexttype,'window': self.window, 'weights': 'tf-idf'} #< finetune
 
-    
-    def process_data(self, sentences, update = False):
+
+    def process_data(self, texts, update = False):
         """
         input: list of sentences
         output: dictionary of {word: updated word_vectors}
         """
-        
-        contexts = self.read_contexts(sentences)     
-        
-        for word in contexts:
-            for cword in contexts[word]:
-                self.vocabulary[word]['word_vector'] = self.vector_addition(word, cword)
+
+        vocabt = defaultdict(dict)
+
+        if self.sentences:
+            for sent in texts:
+                vocabt.update(self.read_contexts(sent))
+        else:
+            vocabt = self.read_contexts([word for li in texts for word in li])
+
+
+        for item in vocabt:
+            for word in vocabt[item]:
+                self.vocabulary[item]['word_vector'] += self.vector_addition(item, word)
+
 
         return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
 
@@ -448,19 +457,8 @@ class Contexter():
         output: dictionary of {word: [words in context]}
         """
         word_contexts = defaultdict(list)
+
         for i, item in enumerate(text):
-            #< input is list of lists
-            if type(item) is list:
-                if self.sentences:
-                    cont = self.read_contexts(item)
-                    for word in cont:
-                        word_contexts[word] += cont[word]
-                else:
-                    contxts = self.read_contexts([word for li in text for word in li])
-                    return contxts
-                    
-            #< input is one list
-            else:
                 context = []
                 if self.contexttype == 'CBOW':
                     #words before
@@ -574,7 +572,7 @@ class Similarity():
                 top[4][0:] = cs, target_word
 
         return(top)
-        
+
     #< Dot product
     def dot_product(self, vector1, vector2):
         return sum(map(lambda x: x[0] * x[1], zip(vector1, vector2)))
@@ -678,9 +676,9 @@ class DataOptions():
 class TextDocFormatter():
     def __init__(self):
         pass
-    
+
     def read_texts(self, doc_path):
         with open(doc_path) as txt_file:
             pass
-        
+
         pass
