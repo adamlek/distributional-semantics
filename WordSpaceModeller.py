@@ -216,7 +216,7 @@ class RandomVectorizer():
         dimensions: dimensionality of the random/word vector (default: 1024)
         random_elements: how many random indices to insert +1's and -1's into in the random vector (default: 6)
     """
-    def __init__(self, dimensions = 1024, random_elements = 6):
+    def __init__(self, dimensions = 1024, random_elements = 4):
         self.dimensions = dimensions
         self.random_elements = random_elements
         self.vocabulary = defaultdict(dict)
@@ -380,7 +380,7 @@ class Weighter():
         df = sum([1 for x in self.document_dict if word in self.document_dict[x]])
         #< to smooth or not to smooth, or to smooth, or not to smooth
         if df != 0:
-            if self.smooth:
+            if self.smooth_idf:
                 inverse_df = math.log10(1+(self.documents_n/df))
             else:
                 inverse_df = math.log10(self.documents_n/df)
@@ -442,11 +442,12 @@ class Contexter():
         else:
             vocabt = self.read_contexts([word for li in texts for word in li])
 
-
         for item in vocabt:
-            for word in vocabt[item]:
-                self.vocabulary[item]['word_vector'] += self.vector_addition(item, word)
-
+            for i, word in enumerate(vocabt[item]):
+                self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
+#                if item == 'the':
+#                    if i < 50:
+#                        print(item, word)
 
         return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
 
@@ -485,7 +486,7 @@ class Contexter():
                         context.append(text[i+1+self.window])
 
                 if context:
-                    word_contexts[item] = context
+                    word_contexts[item] += context
 
         return word_contexts
 
@@ -533,6 +534,7 @@ class Similarity():
             i_word1 = self.vocabulary[word1]
             i_word2 = self.vocabulary[word2]
 
+#        print(i_word1)
         cos_sim = pw.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
         return cos_sim[0][0] #self.cosine_measure(i_word1, i_word2)
 
