@@ -33,7 +33,7 @@ DataReader:
 
     PARAMS:
         preprocess_data:
-            pns: convert propernames to PN (default: True)
+            pns: convert propernames to PN (default: False)
             nums: convert numbers to NUM (default: True)
             percs: convert percentages to PERC (default: True)
 
