@@ -5,14 +5,14 @@ Created on Mon Oct 17 22:21:38 2016
 
 TODO Come up with some fucking good method/function names?
 
-TODO Check stemmer!!!
-TODO HANDLE: Proper names =>>> PN
-
 TODO: distance weights, WHAT WEIGHTS!?
     Ideas?
 
 MAJOR:
 add support for LSA/HAL/neural networks
+
+ISSUES:
+    Fix sentences = True
 
 """
 import sklearn.metrics.pairwise as pw
@@ -235,6 +235,7 @@ class RandomVectorizer():
     #< Generate a random vector
     def random_vector(self):
         arr = np.zeros(self.dimensions)
+#        arr = np.random.random(self.dimensions)
 
         #< distribute (+1)'s and (-1)'s at random indices
         for i in range(0, self.random_elements):
