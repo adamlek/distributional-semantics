@@ -24,8 +24,8 @@ def main():
     #> The Australia tradition shows a strong influence of continental Europe and of the USA, rather than of Britain.
     #> Applied Linguistics Association of Australia (ALAA) was established at a national congress of applied linguists held in August 1976.
     #> ALAA holds a joint annual conference in collaboration with the Association for Applied Linguistics in New Zealand (ALANZ).
-    dataset1 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/austen-sense.txt']
-#    dataset1 = ['/home/usr1/git/dist_data/test_doc_3.txt']
+#    dataset1 = ['/home/usr1/git/dist_data/et_45.txt']
+#    dataset1 = ['/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/test_doc_0.txt', '/home/usr1/git/dist_data/README.txt']
 
 #DATAREADER
 ##################################################
@@ -45,7 +45,7 @@ def main():
 
 #RANDOMVECTORIZER
 ##################################################
-    rv = RandomVectorizer(dimensions=2024)
+    rv = RandomVectorizer(dimensions=1024)
     #create word and random vectors for the strings in vocabulary
     vectors = rv.vocabulary_vectorizer(vocabulary)
     print('vectoring done')
@@ -54,7 +54,7 @@ def main():
 #WEIGHTER
 ##################################################
     #init Weighter, with scheme 0 and don't do idf
-    wgt = Weighter(documents, scheme=1, doidf=True, smooth_idf=True)
+    wgt = Weighter(documents, scheme=1, doidf=False, smooth_idf=False)
 
     #list of weights for all words in vocabulary
 #    weight_list = wgt.weight_list(vocabulary)
@@ -71,7 +71,7 @@ def main():
 #CONTEXTER
 #################################################
     #Init Contexter
-    t = 'CBOW'
+    t = 'skipgram'
     cont1 = Contexter(w_vector_vocab, contexttype=t, window=1, sentences=False)
     cont3 = Contexter(w_vector_vocab, contexttype=t, window=3, sentences=False)
     cont5 = Contexter(w_vector_vocab, contexttype=t, window=5, sentences=False)
@@ -110,14 +110,19 @@ def main():
     sim5 = Similarity(vector_vocabulary5)
     sim10 = Similarity(vector_vocabulary10)
     #sim between 'the' and 'and'
-    words1 = ['he', 'when', 'the', 'talk']
-    words2 = ['she', 'where', 'and', 'speak']
+    words1 = ['say', 'when', 'or', 'syntax', 'linguistics', 'applied', 'language']
+    words2 = ['utterance', 'where', 'maybe', 'grammar', 'language', 'theory', 'communicate']
     for w1, w2 in zip(words1, words2):
         print(w1, w2)
-        print(sim1.cosine_similarity(w1, w2))
-        print(sim3.cosine_similarity(w1, w2))
-        print(sim5.cosine_similarity(w1, w2))
-        print(sim10.cosine_similarity(w1, w2))
+        s1 = sim1.cosine_similarity(w1, w2)
+        s3 = sim3.cosine_similarity(w1, w2)
+        s5 = sim5.cosine_similarity(w1, w2)
+        s10 = sim10.cosine_similarity(w1, w2)
+        print(s1)
+        print(s3)
+        print(s5)
+        print(s10)
+        print((s1+s3+s5+s10)/4)
     #top 5 similar words to 'the'
 #    simtop = sim.top_similarity('the')
 ##################################################
@@ -125,7 +130,14 @@ def main():
 #PLOTTING
 ##################################################
     if plotting:
-        arrs = np.array([vector_vocabulary10[arr] for arr in vector_vocabulary10])
+        ar = []
+        for i, v in enumerate(vector_vocabulary10):
+            if i%100 == 0:
+                ar.append(vector_vocabulary10[v])
+
+        w1 = vector_vocabulary10['he']
+        w2 = vector_vocabulary10['she']
+        arrs = np.array(ar)
         Y = tsne.tsne(arrs, 2, 50, 20.0)
         plt.scatter(Y[:,0], Y[:,1], 20)
         plt.show()
