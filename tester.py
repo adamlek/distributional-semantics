@@ -44,6 +44,10 @@ def new_save(plting):
     #read the file dataset1 and output all sentences, all words, and information about word count/documents
     sentences, vocabulary, documents = dr.preprocess_data(dataset1)
 
+#    print(sentences)
+#    print(vocabulary)
+#    print(documents)
+
     print('reading file done')
 ##################################################
 
@@ -64,6 +68,8 @@ def new_save(plting):
 
     #weight the dictionary of vectors
     vectors = wgt.weight(vectors)
+    
+#    print(wgt.weight_list(vocabulary))
 
     print('weighting done')
 
@@ -92,7 +98,7 @@ def new_save(plting):
 #    #read word contexts from a list of sentences
 #    #output: {word: [words in context]}
 ##    contxts = cont.read_contexts(sentences)
-
+#    print(vector_vocabulary5)
     print('reading contexts done')
 ###################################################
 #
@@ -132,15 +138,25 @@ def new_save(plting):
 ##################################################
     if plotting:
         ar = []
+        lbs = []
         for i, v in enumerate(vector_vocabulary5):
             if i%5 == 0:
                 ar.append(vector_vocabulary5[v])
+                lbs.append(v)
 
-        w1 = vector_vocabulary5['he']
-        w2 = vector_vocabulary5['she']
+#        lbs = ['the', 'when', 'speak', 'run', 'high', 'flow', 'love', 'he', 'and', 'where', 'talk', 'walk', 'low', 'water', 'hate', 'she']
+#        for word in lbs:
+#            ar.append(vector_vocabulary5[word])
+        
         arrs = np.array(ar)
         Y = tsne.tsne(arrs, 2, 50, 20.0)
-        plt.scatter(Y[:,0], Y[:,1], 20)
+#        print(Y)
+        fig, ax = plt.subplots()
+        ax.scatter(Y[:,0], Y[:,1], 20)
+        
+        for i, name in enumerate(lbs):
+            ax.annotate(name, (Y[i][0], Y[i][1]))
+            
         plt.show()
 
 if __name__ == '__main__':
