@@ -180,120 +180,58 @@ DataOptions:
 
 Text
 
-		In 1950, Alan Turing published an article titled "Computing-Machinery and Intelligence". Computational linguistics has theoretical and applied components.
+		line1: In 1950, Alan Turing published an article titled "Computing Machinery and Intelligence".
+		line2: Australia Australian applied linguistics took as its target the applied linguistics of mother tongue teaching and teaching English to immigrants. 
+		The Australia tradition shows a strong influence of continental Europe and of the USA, rather than of Britain. 
+		Applied Linguistics Association of Australia (ALAA) was established at a national congress of applied linguists held in August 1976. 
+		ALAA holds a joint annual conference in collaboration with the Association for Applied Linguistics in New Zealand (ALANZ). and applied components.
 
 
 Datareader
 
 	sentences
-		[['in', 'NUM', 'alan', 'ture', 'publish', 'an', 'articl', 'titl', 'comput', 'machineri', 'and', 'intellig'], ['comput', 'linguist', 'has', 'theoret', 'and', 'appli', 'compon']]
+		[['in', 'NUM', 'alan', 'ture', 'publish', 'an', 'articl', 'titl', 'comput', 'machineri', 'and', 'intellig'], 
+		['australia', 'australian', 'appli', 'linguist', 'took', 'as', 'it', 'target', 'the', 'appli', 'linguist', 'of', 'mother', 'tongu', 'teach', 'and', 'teach', 'english', 'to', 'immigr'], 
+		['the', 'australia', 'tradit', 'show', 'a', 'strong', 'influenc', 'of', 'continent', 'europ', 'and', 'of', 'the', 'usa', 'rather', 'than', 'of', 'britain'], 
+		['appli', 'linguist', 'associat', 'of', 'australia', 'alaa', 'was', 'establish', 'at', 'a', 'nation', 'congress', 'of', 'appli', 'linguist', 'held', 'in', 'august', 'NUM'], 
+		['alaa', 'hold', 'a', 'joint', 'annual', 'confer', 'in', 'collabor', 'with', 'the', 'associat', 'for', 'appli', 'linguist', 'in', 'new', 'zealand', 'alanz']]
 
 	vocabulary:
-		['in', 'NUM', 'alan', 'ture', 'publish', 'an', 'articl', 'titl', 'comput', 'machineri', 'and', 'intellig', 'linguist', 'has', 'theoret', 'appli', 'compon']
+		{'alan', 'ture', 'continent', 'tradit', 'alaa', 'for', 'alanz', 'annual', 'confer', 'intellig', 'it', '.', 'linguist', 'usa', 'publish', 'comput', 'in', 'tongu', 'establish', 'at', 'took', 
+		'collabor', 'articl', 'as', 'new', 'strong', 'mother', 'was', 'titl', 'appli', 'NUM', 'associat', 'english', 'congress', 'britain', 'joint', 'to', 'show', 'nation', 'of', 'hold', 
+		'influenc', 'august', 'teach', 'rather', 'immigr', 'held', 'zealand', 'australian', 'europ', 'with', 'and', 'target', 'an', 'a', 'the', 'australia', 'than', 'machineri'}
+		(ture == turing, stemmer is pretty aggressive with proper names)
 
 	documents:
-		defaultdict(<class 'dict'>, {'test_doc_5.txt': defaultdict(<class 'int'>, {'publish': 1, 'intellig': 1, 'alan': 1, 'comput': 2, 'theoret': 1, 'has': 1, 'ture': 1, 'articl': 1, 'linguist': 1, 'machineri': 1, 'titl': 1, 'appli': 1, 'compon': 1, 'in': 1, 'NUM': 1, 'an': 1, 'and': 2})})
-
+		defaultdict(<class 'dict'>, {'test_doc_4.txt': 
+			defaultdict(<class 'int'>, {'alan': 1, 'zealand': 1, 'tradit': 1, 'alaa': 2, 'for': 1, 'alanz': 1, 'annual': 1, 'ture': 1, 'confer': 1, 'intellig': 1, 'it': 1, 'linguist': 5, 'usa': 1, 
+			'tongu': 1, 'establish': 1, 'in': 4, 'took': 1, 'collabor': 1, 'english': 1, 'articl': 1, 'as': 1, 'hold': 1, 'strong': 1, '.': 5, 'publish': 1, 'was': 1, 'titl': 1, 'appli': 5, 'congress': 1, 
+			'NUM': 2, 'associat': 2, 'comput': 1, 'the': 4, 'britain': 1, 'joint': 1, 'new': 1, 'to': 1, 'show': 1, 'of': 6, 'influenc': 1, 'august': 1, 'teach': 2, 'rather': 1, 'held': 1, 
+			'machineri': 1, 'continent': 1, 'australian': 1, 'europ': 1, 'with': 1, 'and': 3, 'target': 1, 'an': 1, 'a': 3, 'at': 1, 'mother': 1, 'australia': 3, 'than': 1, 'immigr': 1, 'nation': 1})})
 
 RandomVectorizer
 
 	vectors:
-		defaultdict(<class 'dict'>, {'publish': {'word_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'random_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.])}, 'intellig': {'word_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]) ... })
+		defaultdict(<class 'dict'>, {'continent': {'word_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'random_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.])}, 
+			'australian': {'word_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'random_vector': array([ 0.,  0.,  0., ...,  0.,  0.,  0.])}, ...
 
 
 Weighter
 
-	weight:
+	weight_vector:
 		[ 0.  0.  0. ...,  0.  0.  0.]
 
 	weight_list:
-		defaultdict(<class 'int'>, {'publish': 0.05263157894736842, 'intellig': 0.05263157894736842, 'alan': 0.05263157894736842, 'comput': 0.10526315789473684, 'theoret': 0.05263157894736842, 'has': 0.05263157894736842, 'ture': 0.05263157894736842, 'articl': 0.05263157894736842, 'linguist': 0.05263157894736842, 'machineri': 0.05263157894736842, 'titl': 0.05263157894736842, 'appli': 0.05263157894736842, 'compon': 0.05263157894736842, 'in': 0.05263157894736842, 'NUM': 0.05263157894736842, 'an': 0.05263157894736842, 'and': 0.10526315789473684})
-
+		defaultdict(<class 'int'>, 
+			{'continent': 0.010869565217391304, 'zealand': 0.010869565217391304, 'tradit': 0.010869565217391304, 'alaa': 0.021739130434782608, 
+			'for': 0.010869565217391304, 'alanz': 0.010869565217391304, 'annual': 0.010869565217391304, 'alan': 0.010869565217391304, 
+			'confer': 0.010869565217391304, 'intellig': 0.010869565217391304, 'it': 0.010869565217391304, 'comput': 0.010869565217391304, 
+			'linguist': 0.05434782608695652, ...
 
 Contexter
 
-	word_vectors:
-		{'publish': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'intellig': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]) ... }
-
-#sketches of sentencizer / propernamer
-
-Sentencizer: 
-        
-	input: line of symbols
-	vars: start = [], sentences = [], addtolast = None
-
-	A) if line[0] == lower:
-		start += 0
-		addtolast = 0
-
-	B) for i, symbol in line:
-		B1) if i+2 >= len(line):
-			if start not empty: 
-				DO: sentences.append(start[0]:END)
-
-		B2) elif symbol is UPPER:
-			start += i
-
-		B3) elif symbol == . or ! or ?
-			if line[i+2] is UPPER:
-			if line[i-3:i-2] is lower
-			if start not empty: 
-				DO: sentences.append(start[0]:i)
-				DO: line = line[i+2:end]
-				DO: start = []
-
-	C) return sentences:
-			
-propernamer:
-	
-	input: [w1, w2, ... wn]
-
-	A)	for w in input
-		skip w1
-		
-	B)	if w[0] is upper:
-		w, w+1 is not last word:
-		if w+1[0] is upper:
-			del w
-			del w+1
-			w+2 is not last word:
-				if w+2[0] is upper
-				del w+2
-
-		B1) insert PN at index of deleted w
-
-	C)	return
-	
-Output:
-	With Proper Names = PN, numbers = NUMS and percentages = PERC
-
-	Text1(Wikipedia):
-	In 1950, Alan Turing published an article titled "Computing-Machinery and Intelligence".
-
-	In New York City the lions live. 
-	=>
-	['In', 'NUM', 'PN', 'publish', 'an', 'articl', 'titl', 'Comput', 'Machineri', 'and', 'Intellig']
-
-	['In', 'PN', 'the', 'lion', 'live']
-	
-	Text2(Jane Austen - Emma):
-	The wedding was very much like other weddings, where the parties
-	have no taste for finery or parade; and Mrs. Elton, from the
-	particulars detailed by her husband, thought it all extremely shabby,
-	=>
-	['The', 'wed', 'was', 'veri', 'much', 'like', 'other', 'wed', 'where', 'the', 'parti', 
-	'have', 'no', 'tast', 'for', 'fineri', 'or', 'parad', 'and', 'PN', 'from', 'the', 'particular', 
-	'detail', 'by', 'her', 'husband', 'thought', 'it', 'all', 'extrem', 'shabbi']	
-
-	Text3 (Wikipedia):
-	Australia Australian applied linguistics took as its target the applied linguistics of mother tongue teaching and teaching English to immigrants. 
-	The Australia tradition shows a strong influence of continental Europe and of the USA, rather than of Britain. 
-	Applied Linguistics Association of Australia (ALAA) was established at a national congress of applied linguists held in August 1976. ALAA holds a joint annual conference in collaboration with the Association for Applied Linguistics in New Zealand (ALANZ).
-	=>
-	['australia', 'australian', 'appli', 'linguist', 'took', 'as', 'it', 'target', 'the', 'appli', 'linguist', 'of', 'mother', 'tongu', 'teach', 'and', 'teach', 'english', 'to', 'immigr']
-	['the', 'australia', 'tradit', 'show', 'a', 'strong', 'influenc', 'of', 'continent', 'europ', 'and', 'of', 'the', 'USA', 'rather', 'than', 'of', 'britain']
-	['appli', 'PN', 'of', 'australia', 'ALAA', 'was', 'establish', 'at', 'a', 'nation', 'congress', 'of', 'appli', 'linguist', 'held', 'in', 'august', 'NUM', 'ALAA', 'hold', 'a', 'joint', 'annual', 'confer', 'in', 'collabor', 'with', 'the', 'associat', 'for', 'PN', 'in', 'PN', 'ALANZ']
-
+	vectors:
+		{'continent': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'zealand': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'tradit': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]),
 
 #main.py commands:
 * "sim word1 word2" similarity between two words
