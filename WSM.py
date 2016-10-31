@@ -330,6 +330,8 @@ class Contexter():
 
     Contexter.data_info to get the data_info
 
+    TODO: Add PPMI table: log2( (P(x,y)/P(x)P(y)) )
+
     PARAMS:
         contexttype: Which type of context, CBOW or skipgram (default: CBOW)
         window: size of context, CBOW: how many words to take, skipgram: how many words to skip (default: 1)
@@ -437,6 +439,8 @@ class Contexter():
         else:
             return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
 
+    def PPMImatrix(self, context_data):
+        pass
 
 class Similarity():
     """
