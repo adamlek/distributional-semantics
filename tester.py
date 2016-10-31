@@ -15,7 +15,7 @@ import numpy as np
 
 
 def main():
-    plotting = True
+    plotting = False
 #    load_oldsave()
     new_save(plotting)
 
@@ -36,8 +36,8 @@ def new_save(plting):
 
 #    dataset1 = ['/home/usr1/git/dist_data/austen-persuasion.txt']
 #    dataset1 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/austen-persuasion.txt', '/home/usr1/git/dist_data/austen-sense.txt']
-#    dataset1 = ['/home/usr1/git/dist_data/test_doc_0.txt']
-    dataset1 = ['/home/usr1/git/dist_data/formatted1.txt']
+    dataset1 = ['/home/usr1/git/dist_data/test_doc_3.txt']
+#    dataset1 = ['/home/usr1/git/dist_data/formatted1.txt']
 
 #DATAREADER
 ##################################################
@@ -65,7 +65,7 @@ def new_save(plting):
 ##WEIGHTER
 ###################################################
 #    #init Weighter, with scheme 0 and don't do idf
-    tr = TermRelevance(documents, scheme=0, doidf=False, smooth_idf=False)
+    tr = TermRelevance(documents, scheme=2, doidf=False, smooth_idf=False)
 
     #weight the dictionary of vectors
     vectors = tr.weight(vectors)
@@ -76,26 +76,25 @@ def new_save(plting):
 ##################################################
 #    #Init Contexter
     t, s = 0, 2
-#    cont1 = Contexter(w_vector_vocab, contexttype=t, window=1, sentences=False)
-#    cont3 = Contexter(w_vector_vocab, contexttype=t, window=3, sentences=False)
-#    cont5 = Contexter(w_vector_vocab, contexttype=t, window=5, sentences=False)
-#    cont10 = Contexter(w_vector_vocab, contexttype=t, window=10, sentences=False)
     cont1 = Contexter(vectors, contexttype=t, window=1, context_scope=s)
     cont3 = Contexter(vectors, contexttype=t, window=3, context_scope=s)
     cont5 = Contexter(vectors, contexttype=t, window=5, context_scope=s)
     cont10 = Contexter(vectors, contexttype=t, window=10, context_scope=s)
-#
-#    #update vectors (the variable from Contexter initialization)
-#    #output: updated vectors
+
     vector_vocabulary1 = cont1.process_data(sentences)
     vector_vocabulary3 = cont3.process_data(sentences)
     vector_vocabulary5 = cont5.process_data(sentences)
     vector_vocabulary10 = cont10.process_data(sentences)
+    print('read_context done')
 #
-#    #read word contexts from a list of sentences
-#    #output: {word: [words in context]}
-##    contxts = cont.read_contexts(sentences)
-#    print(vector_vocabulary5)
+    ###PPMI of co-occurence
+#    ppmi, vocab = cont1.PPMImatrix(cont1.vocabt)
+#    print(vocab)
+#    for i, m in enumerate(ppmi):
+#        print(vocab[i])
+#        print(m, '\n')
+#    print(cc)
+
     print('reading contexts done')
 ###################################################
 #
@@ -109,32 +108,32 @@ def new_save(plting):
 
 ##SIMILARITY
 ###################################################
-    wc = 0
-    for x in documents:
-        for v in documents[x].values():
-            wc += v
-    print(wc)
-#    #Initialize similarity class
-    sim1 = Similarity(vector_vocabulary1)
-    sim3 = Similarity(vector_vocabulary3)
-    sim5 = Similarity(vector_vocabulary5)
-    sim10 = Similarity(vector_vocabulary10)
-
-#    words1 = ['the', 'when', 'speak', 'run', 'high', 'flow', 'love', 'he']
-#    words2 = ['and', 'where', 'talk', 'walk', 'low', 'water', 'hate', 'she']
-    words1 = ['language', 'applied']
-    words2 = ['linguist', 'theoretical']
-    for w1, w2 in zip(words1, words2):
-        print(w1, w2)
-        s1 = sim1.cosine_similarity(w1, w2)
-        s3 = sim3.cosine_similarity(w1, w2)
-        s5 = sim5.cosine_similarity(w1, w2)
-        s10 = sim10.cosine_similarity(w1, w2)
-        print(s1)
-        print(s3)
-        print(s5)
-        print(s10)
-        print((s1+s3+s5+s10)/4)
+#    wc = 0
+#    for x in documents:
+#        for v in documents[x].values():
+#            wc += v
+#    print(wc)
+##    #Initialize similarity class
+#    sim1 = Similarity(vector_vocabulary1)
+#    sim3 = Similarity(vector_vocabulary3)
+#    sim5 = Similarity(vector_vocabulary5)
+#    sim10 = Similarity(vector_vocabulary10)
+##
+###    words1 = ['the', 'when', 'speak', 'run', 'high', 'flow', 'love', 'he']
+###    words2 = ['and', 'where', 'talk', 'walk', 'low', 'water', 'hate', 'she']
+#    words1 = ['language', 'applied']
+#    words2 = ['linguist', 'theoretical']
+#    for w1, w2 in zip(words1, words2):
+#        print(w1, w2)
+#        s1 = sim1.cosine_similarity(w1, w2)
+#        s3 = sim3.cosine_similarity(w1, w2)
+#        s5 = sim5.cosine_similarity(w1, w2)
+#        s10 = sim10.cosine_similarity(w1, w2)
+#        print(s1)
+#        print(s3)
+#        print(s5)
+#        print(s10)
+#        print((s1+s3+s5+s10)/4)
 
 #################################################
 
@@ -144,7 +143,7 @@ def new_save(plting):
         ar = []
         lbs = []
         for i, v in enumerate(vector_vocabulary5):
-            if i%100 == 0:
+            if i%5 == 0:
                 ar.append(vector_vocabulary5[v])
                 lbs.append(v)
 
