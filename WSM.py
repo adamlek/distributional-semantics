@@ -345,6 +345,7 @@ class Contexter():
     """
     def __init__(self, vocabulary, contexttype = 1, window = 1, context_scope = 1, distance_weights = False, weights = False):
         self.vocabulary = vocabulary
+        self.vocabt = defaultdict(dict)
 
         self.window = window
         self.contexttype = contexttype
@@ -369,19 +370,17 @@ class Contexter():
         output: dictionary of {word: updated word_vectors}
         """
 
-        vocabt = defaultdict(dict)
-
         if self.context_scope == 0: #< scope is sentences
             for sent in texts:
-                vocabt.update(self.read_contexts(sent))
+                self.vocabt.update(self.read_contexts(sent))
         elif self.context_scope == 1: #< scope is each document, input: [[doc1],[doc2]]
             for doc in sent:
-                vocabt.update(self.read_contexts([li for li in doc]))
+                self.vocabt.update(self.read_contexts([li for li in doc]))
         else: #< scope is all of the text, input: [[doc1],[doc2]]
-            vocabt = self.read_contexts([w for li in texts for word in li for w in word])
+            self.vocabt = self.read_contexts([w for li in texts for word in li for w in word])
 
-        for item in vocabt:
-            for i, word in enumerate(vocabt[item]):
+        for item in self.vocabt:
+            for i, word in enumerate(self.vocabt[item]):
                 self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
 
         return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
@@ -439,8 +438,32 @@ class Contexter():
         else:
             return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
 
-    def PPMImatrix(self, context_data):
-        pass
+    def PPMImatrix(self, context_dict):
+        vocab = [x for x in context_dict]
+        total = sum([len(context_dict[x]) for x in context_dict])
+        PPMIdict = defaultdict(dict)
+        PPMIdict = {x: defaultdict(int) for x in context_dict.keys()}
+
+        PPMImatrix = np.ones((len(vocab), len(vocab)))
+        for n, w1 in enumerate(context_dict.keys()):
+            for i, entry in enumerate(context_dict[w1]):
+                PPMIdict[w1][entry] += 1
+
+        for w1 in PPMIdict:
+            for e in PPMIdict[w1]:
+                wc = PPMIdict[e][w1]
+                
+                P1 = wc/total #joint probability
+                P2 = sum([w for x in PPMIdict for w in PPMIdict[x].values() if x == w1])/total #word probability
+                P3 = sum([w for x in PPMIdict for w in PPMIdict[x].values() if x == e])/total #context word probability
+                PPMI = math.log(P1/(P2*P3),2)
+                if PPMI < 0:
+                    PPMI = 0
+
+                PPMImatrix[vocab.index(w1)][vocab.index(e)] = PPMI
+        
+        del PPMIdict     
+        return PPMImatrix, vocab             
 
 class Similarity():
     """
@@ -523,7 +546,10 @@ class Similarity():
         vec1 = math.sqrt(self.dot_product(vector1, vector1))
         vec2 = math.sqrt(self.dot_product(vector2, vector2))
 
-        #TODO handle division by zero
+        #TODO handle division by zero ???
+        if vec1 * vec2 <= 0:
+            return 0
+            
         return dot_prod / (vec1 * vec2)
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
