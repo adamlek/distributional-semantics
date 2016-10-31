@@ -31,23 +31,21 @@ class DataReader():
             nums: convert numbers to NUM (default: True)
             percs: convert percentages to PERC (default: True)
     """
-    def __init__(self):
+    def __init__(self, seperate = True, nums = True, perc = True):
         self.vocab = set()
         self.doc_count = defaultdict(dict)
 
+        self.seperate = seperate
         self.current_doc = ""
-        self.nums = True
-        self.percs = True
-        self.pns = False
-
+        self.nums = nums
+        self.perc = perc
 
     #< By default create vectors from data
-    def preprocess_data(self, filenames, pns = False, nums = True, perc = True):
+    def preprocess_data(self, filenames):
         """
         input: List of .txt files, params
         output: List of sentences, list of words in vocabulary, dictionary of documents with wordcount in them
         """
-        self.pns, self.nums, self.percs = pns, nums, perc
         doc_text = defaultdict(str)
 
         for filename in filenames:
@@ -58,39 +56,51 @@ class DataReader():
                     filen = re.search('(\/+.+\/)(.*.txt)', filename)
                     doc_text[filen.group(2)] = datafile.read()
                     print('Success!\n')
-#                doc_text.append(sentences_collection)
 
             except FileNotFoundError as fnfe:
                 print('FILE ERROR!\n {0}\n'.format(fnfe))
                 continue
 
+        #TODO add support for inverse sentence frequency
         alltext = []
         for doc in doc_text:
             #TODO reorganize!
-            doc_text[doc] = re.sub('[^\sA-ZÅÄÖa-zåäö0-9%-\.]', '', doc_text[doc])
-            doc_text[doc] = re.sub('(\.\s)', ' . ', doc_text[doc])
-            doc_text[doc] = re.sub('[-,\(\)]', ' ', doc_text[doc])
+            doc_text[doc] = re.sub('(\.|\?|!)\s{1}', ' STOP ', doc_text[doc])
+            doc_text[doc] = re.sub('[^\sA-ZÅÄÖa-zåäö0-9%-]', '', doc_text[doc])
+            doc_text[doc] = re.sub('[-,;:\(\)]', ' ', doc_text[doc])
             doc_text[doc] = [doc_text[doc].split()]
 
             self.current_doc = doc
             self.doc_count[doc] = defaultdict(int)
             for text in doc_text[doc]:
                 text = self.sentencizer(text)
+                doc_sents = []
                 for sentence in text:
-                    alltext.append(sentence)
+                    doc_sents.append(sentence)
+
+                alltext.append(doc_sents)
+
+        #< return as one list or one for each document
+        if not self.seperate:
+            if len(doc_text.keys()) > 1:
+                alltext = [s for x in alltext for s in x]
+
+        #< cleanup
+        del doc_text
 
         return alltext, self.vocab, self.doc_count
 
     def format_word(self, word):
-
         if word.isdigit():
-            word = 'NUM'
+            if self.nums:
+                word = 'NUM'
         elif '%' in word:
-            word = 'PERC'
+            if self.perc:
+                word = 'PERC'
         else:
             word = stem(word)
 
-        if word not in ['NUM','PERC']:
+        if word not in ['NUM', 'PERC', 'STOP']:
             word = word.lower()
 
         #< populate vocabulary and doc_word_count
@@ -100,24 +110,30 @@ class DataReader():
         return word
 
     def sentencizer(self, text):
-        sent_end = ['.','?','!']
+        sent_end = ['STOP', '.', '!', '?']
         start = [0]
         sentence_text = []
+        pnwords = []
 
         for i, word in enumerate(text):
             text[i] = self.format_word(word)
             #< propername check here?
-            if word[0].isupper():
-                start.append(i)
-
             if i+1 == len(text):
-                sentence_text.append(text[start[0]:i])
+                sentence_text.append(text[start[0]:])
+                break
 
-            elif word[-1] in sent_end:
+            elif word[0].isupper():
+                start.append(i)
+#                if text[i+1][0].isupper() and len(start) > 1:
+#                    pnwords.append((i, i+1))
+#                    print(word, text[i+1])
+
+            if word in sent_end:
                 if text[i+1][0].isupper(): #check conditions!!!
-                    sentence_text.append(text[start[0]:i])
-                    start = [i+1]
-            
+                    sentence_text.append(text[start[0]:i+1])
+                    start = []
+
+#        print(pnwords)
         return sentence_text
 
 
@@ -158,12 +174,12 @@ class RandomVectorizer():
 
         return arr
 
-class Weighter():
+class TermRelevance():
     """
-    Weights vector based on tf-idf
+    Weights based on tf-idf
     https://en.wikipedia.org/wiki/Tf%E2%80%93idf
 
-    Weighter.weight_setup for weight_setup
+    TermRelevance.weight_setup for weight_setup
 
     SCHEMES:
 
@@ -317,7 +333,7 @@ class Contexter():
     PARAMS:
         contexttype: Which type of context, CBOW or skipgram (default: CBOW)
         window: size of context, CBOW: how many words to take, skipgram: how many words to skip (default: 1)
-        sentences: set context boundry at sentence boundaries (default: True)
+        context_scope: the scope of the contexts, 0 = sentences, 1 = document text, 2 = all of the texts (default: 1)
         distance_weights: give weights to words based on distance (default: False) TODO TODO TODO
         weights: do weighting in this class >>> dict{word: weight}
 
@@ -325,7 +341,7 @@ class Contexter():
         vocabulary of word vectors
         >>> dict{word: {word_vector: [word_vector], random_vector: [random_vector]}}
     """
-    def __init__(self, vocabulary, contexttype = 1, window = 1, sentences = False, distance_weights = False, weights = False):
+    def __init__(self, vocabulary, contexttype = 1, window = 1, context_scope = 1, distance_weights = False, weights = False):
         self.vocabulary = vocabulary
 
         self.window = window
@@ -338,7 +354,7 @@ class Contexter():
             context = 'skipgram'
 
         self.distance_weights = distance_weights #TODO add weighting at self.word_addition
-        self.sentences = sentences
+        self.context_scope = context_scope
 
         self.weights = weights
 
@@ -353,11 +369,14 @@ class Contexter():
 
         vocabt = defaultdict(dict)
 
-        if self.sentences: #< Errorring atm
+        if self.context_scope == 0: #< scope is sentences
             for sent in texts:
                 vocabt.update(self.read_contexts(sent))
-        else:
-            vocabt = self.read_contexts([word for li in texts for word in li])
+        elif self.context_scope == 1: #< scope is each document, input: [[doc1],[doc2]]
+            for doc in sent:
+                vocabt.update(self.read_contexts([li for li in doc]))
+        else: #< scope is all of the text, input: [[doc1],[doc2]]
+            vocabt = self.read_contexts([w for li in texts for word in li for w in word])
 
         for item in vocabt:
             for i, word in enumerate(vocabt[item]):
@@ -368,42 +387,43 @@ class Contexter():
     #< only requires text, will always output contexts of every word
     def read_contexts(self, text):
         """
-        input: list of strings or list of lists[strings]
+        input: list of strings
         output: dictionary of {word: [words in context]}
         """
         word_contexts = defaultdict(list)
 
         for i, item in enumerate(text):
-                context = []
 
-                # CBOW
-                if self.contexttype == 0:
-                    #words before
-                    if (i-self.window) <= 0:
-                        context += text[:i]
-                    else:
-                        context += text[i-self.window:i]
-                    #< words after
-                    if (i+self.window) >= len(text):
-                        context += text[i+1:]
-                    else:
-                        context += text[i+1:i+1+self.window]
+            context = []
 
-                #< skipgram
-                elif self.contexttype == 1:
-                    #word before
-                    if (i-self.window-1) < 0:
-                        pass
-                    else:
-                        context.append(text[i-self.window-1])
-                    #< words after
-                    if (i+self.window+1) >= len(text):
-                        pass
-                    else:
-                        context.append(text[i+1+self.window])
+            # CBOW
+            if self.contexttype == 0:
+                #words before
+                if (i-self.window) <= 0:
+                    context += text[:i]
+                else:
+                    context += text[i-self.window:i]
+                #< words after
+                if (i+self.window) >= len(text):
+                    context += text[i+1:]
+                else:
+                    context += text[i+1:i+1+self.window]
 
-                if context:
-                    word_contexts[item] += context
+            #< skipgram
+            else:
+                #word before
+                if (i-self.window-1) < 0:
+                    pass
+                else:
+                    context.append(text[i-self.window-1])
+                #< words after
+                if (i+self.window+1) >= len(text):
+                    pass
+                else:
+                    context.append(text[i+1+self.window])
+
+            if context:
+                word_contexts[item] += context
 
         return word_contexts
 
@@ -588,13 +608,3 @@ class DataOptions():
 
         else:
             print('No data loaded!')
-
-class TextDocFormatter():
-    def __init__(self):
-        pass
-
-    def read_texts(self, doc_path):
-        with open(doc_path) as txt_file:
-            pass
-
-        pass
