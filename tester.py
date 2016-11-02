@@ -12,6 +12,8 @@ from WSM import DataOptions
 import tsne
 import matplotlib.pyplot as plt
 import numpy as np
+import csv
+import scipy.stats as st
 
 
 def main():
@@ -33,11 +35,12 @@ def load_oldsave():
 
 def new_save(plting):
     plotting = plting
+    teststuff = True
 
-#    dataset1 = ['/home/usr1/git/dist_data/austen-persuasion.txt']
+#    dataset1 = ['/home/usr1/git/dist_data/test_doc_4.txt']
 #    dataset1 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/austen-persuasion.txt', '/home/usr1/git/dist_data/austen-sense.txt']
-    dataset1 = ['/home/usr1/git/dist_data/test_doc_3.txt']
-#    dataset1 = ['/home/usr1/git/dist_data/formatted1.txt']
+#    dataset1 = ['/home/usr1/git/dist_data/reut1.txt']
+    dataset1 = ['/home/usr1/git/dist_data/formatted2.txt', '/home/usr1/git/dist_data/reut1.txt', '/home/usr1/git/dist_data/reut2.txt']
 
 #DATAREADER
 ##################################################
@@ -45,27 +48,33 @@ def new_save(plting):
     #read the file dataset1 and output all sentences, all words, and information about word count/documents
     sentences, vocabulary, documents = dr.preprocess_data(dataset1)
 
+    print(len(sentences))
 #    for sent in sentences:
 #        print(sent, '\n')
-#    print(vocabulary)
-#    print(documents)
+
+    t = 0
+    for v in documents:
+        t += sum(documents[v].values())
+    print(t, 'total tokens')
+    print(len(vocabulary), 'total types')
 
     print('reading file done')
 ##################################################
 
 ##RANDOMVECTORIZER
 ###################################################
-    rv = RandomVectorizer(dimensions=512)
-#    #create word and random vectors for the strings in vocabulary
+    rv = RandomVectorizer(dimensions=3072, random_elements=4)
+    #create word and random vectors for the strings in vocabulary
     vectors = rv.vocabulary_vectorizer(vocabulary)
     print('vectoring done')
-#    print(vectors)
 ###################################################
 
 ##WEIGHTER
 ###################################################
-#    #init Weighter, with scheme 0 and don't do idf
-    tr = TermRelevance(documents, scheme=2, doidf=False, smooth_idf=False)
+    w, t, s = 1, 1, 2
+    print(w, t, s)
+    #init Weighter, with scheme 0 and don't do idf
+    tr = TermRelevance(documents, scheme=w, doidf=True, smooth_idf=True)
 
     #weight the dictionary of vectors
     vectors = tr.weight(vectors)
@@ -74,19 +83,21 @@ def new_save(plting):
 #
 ##CONTEXTER
 ##################################################
-#    #Init Contexter
-    t, s = 0, 2
+    #Init Contexter
     cont1 = Contexter(vectors, contexttype=t, window=1, context_scope=s)
-    cont3 = Contexter(vectors, contexttype=t, window=3, context_scope=s)
     cont5 = Contexter(vectors, contexttype=t, window=5, context_scope=s)
     cont10 = Contexter(vectors, contexttype=t, window=10, context_scope=s)
 
     vector_vocabulary1 = cont1.process_data(sentences)
-    vector_vocabulary3 = cont3.process_data(sentences)
     vector_vocabulary5 = cont5.process_data(sentences)
     vector_vocabulary10 = cont10.process_data(sentences)
-    print('read_context done')
-#
+    #poor computah :()
+    del sentences
+    del vectors
+    del documents
+    del cont1
+    del cont5
+    del cont10
     ###PPMI of co-occurence
 #    ppmi, vocab = cont1.PPMImatrix(cont1.vocabt)
 #    print(vocab)
@@ -108,36 +119,59 @@ def new_save(plting):
 
 ##SIMILARITY
 ###################################################
-#    wc = 0
-#    for x in documents:
-#        for v in documents[x].values():
-#            wc += v
-#    print(wc)
-##    #Initialize similarity class
-#    sim1 = Similarity(vector_vocabulary1)
-#    sim3 = Similarity(vector_vocabulary3)
-#    sim5 = Similarity(vector_vocabulary5)
-#    sim10 = Similarity(vector_vocabulary10)
-##
-###    words1 = ['the', 'when', 'speak', 'run', 'high', 'flow', 'love', 'he']
-###    words2 = ['and', 'where', 'talk', 'walk', 'low', 'water', 'hate', 'she']
-#    words1 = ['language', 'applied']
-#    words2 = ['linguist', 'theoretical']
-#    for w1, w2 in zip(words1, words2):
-#        print(w1, w2)
-#        s1 = sim1.cosine_similarity(w1, w2)
-#        s3 = sim3.cosine_similarity(w1, w2)
-#        s5 = sim5.cosine_similarity(w1, w2)
-#        s10 = sim10.cosine_similarity(w1, w2)
-#        print(s1)
-#        print(s3)
-#        print(s5)
-#        print(s10)
-#        print((s1+s3+s5+s10)/4)
 
+    #Initialize similarity class
+    sim1 = Similarity(vector_vocabulary1)
+    sim5 = Similarity(vector_vocabulary5)
+    sim10 = Similarity(vector_vocabulary10)
+
+    with open('/home/usr1/git/dist_data/combined.csv') as f:
+        with open('/home/usr1/git/dist_data/combined1.csv', 'w') as res:
+            csv_wr = csv.writer(res, delimiter=',')
+            for i, ln in enumerate(f):
+                ln = ln.lower().rstrip().split(',')
+                s1 = sim1.cosine_similarity(ln[0], ln[1])
+                s5 = sim5.cosine_similarity(ln[0], ln[1])
+                s10 = sim10.cosine_similarity(ln[0], ln[1])
+
+                medians = 0
+                try:
+                    o = float(s1)
+                    oo = float(s5)
+                    ooo = float(s10)
+
+                except Exception as e:
+                    continue
+
+                csv_wr.writerow([ln[0], ln[1], ln[2], s1, s5, s10])
+
+#PEARSON SPEARMAN TESTING
 #################################################
+    if teststuff:
+        with open('/home/usr1/git/dist_data/combined1.csv') as f:
+            humanv = []
+            riv1 = []
+            riv5 = []
+            riv10 = []
+            meds = []
+            for i, ln in enumerate(f):
+                ln = ln.rstrip().split(',')
+#                print(ln)
+                humanv.append(float(ln[2]))
+                riv1.append(float(ln[3]))
+                riv5.append(float(ln[4]))
+                riv10.append(float(ln[5]))
 
-#PLOTTING
+
+        print(len(humanv), len(riv1), len(riv5), len(riv10))
+        print(st.stats.spearmanr(humanv, riv1))
+        print(st.pearsonr(humanv,riv1), '1\n')
+        print(st.stats.spearmanr(humanv, riv5))
+        print(st.pearsonr(humanv,riv5), '5\n')
+        print(st.stats.spearmanr(humanv, riv10))
+        print(st.pearsonr(humanv,riv10), '10\n')
+
+#TSNE PLOTTING
 ##################################################
     if plotting:
         ar = []
