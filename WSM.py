@@ -65,10 +65,9 @@ class DataReader():
         #TODO add support for inverse sentence frequency
         alltext = []
         for doc in doc_text:
-            #TODO reorganize! fix STOP
             doc_text[doc] = re.sub('(\.+|\?+|!+)\s{1}', ' . ', doc_text[doc])
             doc_text[doc] = re.sub('[^\sA-ZÅÄÖa-zåäö0-9%-\.]', '', doc_text[doc])
-            doc_text[doc] = re.sub('[-]', ' ', doc_text[doc])
+            doc_text[doc] = re.sub('[-\(\)]', ' ', doc_text[doc])
             doc_text[doc] = [doc_text[doc].split()]
 
             self.current_doc = doc
@@ -94,7 +93,6 @@ class DataReader():
         return alltext, self.vocab, self.doc_count
 
     def format_word(self, word):
-#        re.match('(\d+\.\d+)|(\d+\,\d+)|(\d+)', word)
         if re.match('(\d+\.\d+)|(\d+\,\d+)|(\d+)', word): #word.isdigit():
             if self.nums:
                 word = 'NUM'
@@ -117,10 +115,11 @@ class DataReader():
         sent_end = ['STOP', '.', '!', '?']
         start = [0]
         sentence_text = []
-        pnwords = []
+#        pnwords = []
 
         for i, word in enumerate(text):
-            text[i] = self.format_word(word)
+            if word != '.':
+                text[i] = self.format_word(word)
 
             if i+1 == len(text):
                 sentence_text.append(text[start[0]:])
@@ -320,10 +319,6 @@ class TermRelevance():
         else:
             return 1 #< !!! identity element, no change in weight
 
-
-#< Read a list of sentences and apply vector addition from context
-#< vocabulary = dictionary of words with word_vector and random_vector
-#< context = 'CBOW' or 'skipgram', window = window size (default = 1)
 class Contexter():
     """
     CURRENTLY: n-skip-2-grams only, i.e. only the steps to skip are customizable
@@ -394,7 +389,6 @@ class Contexter():
         else:
             return self.vocabt
 
-    #< only requires text, will always output contexts of every word
     def read_contexts(self, text):
         """
         input: list of strings
@@ -403,7 +397,6 @@ class Contexter():
         word_contexts = defaultdict(list)
 
         for i, item in enumerate(text):
-
             context = []
 
             # CBOW
@@ -447,11 +440,45 @@ class Contexter():
         else:
             return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
 
-    def PPMImatrix(self, context_dict):
-        for word in context_dict:
-            for cw in context_dict:
-                pass
+    def PPMImatrix(self, context_dict, documents):
+        """
+        PMI = log( P((w1, c1)/N) / P(w1/N) * p(c1/N) ) 
+        
+        Get PMI for every word, in relation to the top 100 words.
+        1. iterate documents 
+        2. find top x word counts
+        
+        0. new PMIdict { w1...wn: float }
+        1. iterate context_dict
+        2. PMI: w1 => y for y in top x
+            a tot(w1+y)/N
+            b tot(w1)*tot(y)/Non3
+            c a/b = PMI 
+            d update PMIdict w1 : y = PMI
+        """
+        ntop = 50
+        for d in documents:
+            N = sum(documents[d].values())
+            top = set()
+            [top.add(y) for x in sorted(documents[d].values())[-ntop:] for y in documents[d] if documents[d][y] == x]
+#            print(top)
 
+        PPMIdict = defaultdict(dict)
+        for w in context_dict:
+            ww = documents[d][w]/N #Count of w1/total contexts(?)
+            for wc in top:
+                wwc = documents[d][wc]/N #Count of c1/total contexts(?)
+                IP = (ww*wwc)
+                JP = context_dict[w].count(wc)/N #count of w1 and c1/N
+                if JP == 0:
+                    continue
+                elif IP == 0:
+                    continue
+                    
+                PPMIdict[w][wc] = math.log10(JP/IP)
+    
+        return PPMIdict
+                
 class Similarity():
     """
     Cosine similarities between vectors
@@ -460,15 +487,17 @@ class Similarity():
         vocabulary of words and their word_vectors
         >>> dict{word:[word_vector]}
     """
-    def __init__(self, vocabulary, svd = False):
+    def __init__(self, vocabulary, svd = False, pmi = False):
         self.vocabulary = vocabulary
         #vocab structure {word: [word_vector]}
         self.svd = svd
         if self.svd:
             self.svder = TruncatedSVD(n_components=1024)
             self.svder.fit([self.vocabulary[x] for x in self.vocabulary])
+        
+        self.pmi = pmi
 
-    def cosine_similarity(self, s_word1, s_word2):
+    def cosine_similarity(self, s_word1, s_word2, pmi = False):
         """
         input: string1, string2
         output: cosine similarity
@@ -483,10 +512,17 @@ class Similarity():
             i_word1 = self.vocabulary[word1]
             i_word2 = self.vocabulary[word2]
 
-
         if self.svd:
             i_word1 = self.svder.transform(i_word1.reshape(1,-1))
             i_word2 = self.svder.transform(i_word2.reshape(1,-1))
+            
+        print(sum(i_word1), '1')
+        print(sum(i_word2), '1')
+        if self.pmi:
+            print(sum(self.pmi[word1].values())) #if val == 0
+            print(sum(self.pmi[word2].values()))
+#            print(sum(i_word1), '2')
+#            print(sum(i_word2), '2')
 
         cos_sim = pw.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
         return cos_sim[0][0] #self.cosine_measure(i_word1, i_word2)
