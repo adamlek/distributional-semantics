@@ -17,9 +17,8 @@ import scipy.stats as st
 
 
 def main():
-    plotting = False
 #    load_oldsave()
-    new_save(plotting)
+    new_save()
 
 def load_oldsave():
     do = DataOptions()
@@ -33,14 +32,14 @@ def load_oldsave():
         s = sim.cosine_similarity(w1, w2)
         print(s)
 
-def new_save(plting):
-    plotting = plting
+def new_save():
+    plotting = False
     teststuff = True
 
-#    dataset1 = ['/home/usr1/git/dist_data/test_doc_4.txt']
+    dataset1 = ['/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/test_doc_2.txt', '/home/usr1/git/dist_data/test_doc_3.txt', '/home/usr1/git/dist_data/test_doc_4.txt', '/home/usr1/git/dist_data/test_doc_5.txt', '/home/usr1/git/dist_data/test_doc_6.txt']
 #    dataset1 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/austen-persuasion.txt', '/home/usr1/git/dist_data/austen-sense.txt']
 #    dataset1 = ['/home/usr1/git/dist_data/reut1.txt']
-    dataset1 = ['/home/usr1/git/dist_data/formatted2.txt', '/home/usr1/git/dist_data/reut1.txt', '/home/usr1/git/dist_data/reut2.txt']
+#    dataset1 = ['/home/usr1/git/dist_data/formatted2.txt', '/home/usr1/git/dist_data/reut1.txt', '/home/usr1/git/dist_data/reut2.txt']
 
 #DATAREADER
 ##################################################
@@ -48,7 +47,7 @@ def new_save(plting):
     #read the file dataset1 and output all sentences, all words, and information about word count/documents
     sentences, vocabulary, documents = dr.preprocess_data(dataset1)
 
-    print(len(sentences))
+#    print(len(sentences))
 #    for sent in sentences:
 #        print(sent, '\n')
 
@@ -63,7 +62,7 @@ def new_save(plting):
 
 ##RANDOMVECTORIZER
 ###################################################
-    rv = RandomVectorizer(dimensions=3072, random_elements=4)
+    rv = RandomVectorizer(dimensions=1024, random_elements=4)
     #create word and random vectors for the strings in vocabulary
     vectors = rv.vocabulary_vectorizer(vocabulary)
     print('vectoring done')
@@ -71,7 +70,7 @@ def new_save(plting):
 
 ##WEIGHTER
 ###################################################
-    w, t, s = 1, 1, 2
+    w, t, s = 1, 0, 2
     print(w, t, s)
     #init Weighter, with scheme 0 and don't do idf
     tr = TermRelevance(documents, scheme=w, doidf=True, smooth_idf=True)
@@ -88,18 +87,23 @@ def new_save(plting):
     cont5 = Contexter(vectors, contexttype=t, window=5, context_scope=s)
     cont10 = Contexter(vectors, contexttype=t, window=10, context_scope=s)
 
+    
     vector_vocabulary1 = cont1.process_data(sentences)
     vector_vocabulary5 = cont5.process_data(sentences)
     vector_vocabulary10 = cont10.process_data(sentences)
     #poor computah :()
-    del sentences
-    del vectors
-    del documents
-    del cont1
-    del cont5
-    del cont10
+
+    cont_dict = cont1.vocabt
+#    print(cont_dict)
+#    for v in cont_dict:
+#        print(v, cont_dict[v])
     ###PPMI of co-occurence
-#    ppmi, vocab = cont1.PPMImatrix(cont1.vocabt)
+    xpmi = cont1.PPMImatrix(cont_dict, documents)
+#    for v in pmi:
+#        print(v)
+#        for n in pmi[v]:
+#            print(n, pmi[v][n])
+    
 #    print(vocab)
 #    for i, m in enumerate(ppmi):
 #        print(vocab[i])
@@ -121,9 +125,9 @@ def new_save(plting):
 ###################################################
 
     #Initialize similarity class
-    sim1 = Similarity(vector_vocabulary1)
-    sim5 = Similarity(vector_vocabulary5)
-    sim10 = Similarity(vector_vocabulary10)
+    sim1 = Similarity(vector_vocabulary1, pmi = xpmi)
+    sim5 = Similarity(vector_vocabulary5, pmi = xpmi)
+    sim10 = Similarity(vector_vocabulary10, pmi = xpmi)
 
     with open('/home/usr1/git/dist_data/combined.csv') as f:
         with open('/home/usr1/git/dist_data/combined1.csv', 'w') as res:
@@ -133,8 +137,7 @@ def new_save(plting):
                 s1 = sim1.cosine_similarity(ln[0], ln[1])
                 s5 = sim5.cosine_similarity(ln[0], ln[1])
                 s10 = sim10.cosine_similarity(ln[0], ln[1])
-
-                medians = 0
+                
                 try:
                     o = float(s1)
                     oo = float(s5)
@@ -153,7 +156,6 @@ def new_save(plting):
             riv1 = []
             riv5 = []
             riv10 = []
-            meds = []
             for i, ln in enumerate(f):
                 ln = ln.rstrip().split(',')
 #                print(ln)
