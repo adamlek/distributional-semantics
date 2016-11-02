@@ -10,6 +10,7 @@ TODO: distance weights, WHAT WEIGHTS!?
 
 """
 import sklearn.metrics.pairwise as pw
+from sklearn.decomposition import TruncatedSVD
 from stemming.porter2 import stem #ENGLISH
 import numpy as np
 
@@ -31,7 +32,7 @@ class DataReader():
             nums: convert numbers to NUM (default: True)
             percs: convert percentages to PERC (default: True)
     """
-    def __init__(self, seperate = True, nums = True, perc = True):
+    def __init__(self, seperate = False, nums = True, perc = True):
         self.vocab = set()
         self.doc_count = defaultdict(dict)
 
@@ -51,7 +52,7 @@ class DataReader():
         for filename in filenames:
             try:
                 with open(filename) as datafile:
-                    print('Reading file {0}...'.format(filename))
+#                    print('Reading file {0}...'.format(filename))
                     #< Add dictionary entry with name = filename
                     filen = re.search('(\/+.+\/)(.*.txt)', filename)
                     doc_text[filen.group(2)] = datafile.read()
@@ -64,26 +65,28 @@ class DataReader():
         #TODO add support for inverse sentence frequency
         alltext = []
         for doc in doc_text:
-            #TODO reorganize!
-            doc_text[doc] = re.sub('(\.|\?|!)\s{1}', ' STOP ', doc_text[doc])
-            doc_text[doc] = re.sub('[^\sA-ZÅÄÖa-zåäö0-9%-]', '', doc_text[doc])
-            doc_text[doc] = re.sub('[-,;:\(\)]', ' ', doc_text[doc])
+            #TODO reorganize! fix STOP
+            doc_text[doc] = re.sub('(\.+|\?+|!+)\s{1}', ' . ', doc_text[doc])
+            doc_text[doc] = re.sub('[^\sA-ZÅÄÖa-zåäö0-9%-\.]', '', doc_text[doc])
+            doc_text[doc] = re.sub('[-]', ' ', doc_text[doc])
             doc_text[doc] = [doc_text[doc].split()]
 
             self.current_doc = doc
             self.doc_count[doc] = defaultdict(int)
             for text in doc_text[doc]:
                 text = self.sentencizer(text)
+
                 doc_sents = []
                 for sentence in text:
+                    while '.' in sentence:
+                        sentence.remove('.')
                     doc_sents.append(sentence)
 
                 alltext.append(doc_sents)
 
         #< return as one list or one for each document
         if not self.seperate:
-            if len(doc_text.keys()) > 1:
-                alltext = [s for x in alltext for s in x]
+            alltext = [s for x in alltext for s in x]
 
         #< cleanup
         del doc_text
@@ -91,7 +94,8 @@ class DataReader():
         return alltext, self.vocab, self.doc_count
 
     def format_word(self, word):
-        if word.isdigit():
+#        re.match('(\d+\.\d+)|(\d+\,\d+)|(\d+)', word)
+        if re.match('(\d+\.\d+)|(\d+\,\d+)|(\d+)', word): #word.isdigit():
             if self.nums:
                 word = 'NUM'
         elif '%' in word:
@@ -117,7 +121,7 @@ class DataReader():
 
         for i, word in enumerate(text):
             text[i] = self.format_word(word)
-            #< propername check here?
+
             if i+1 == len(text):
                 sentence_text.append(text[start[0]:])
                 break
@@ -130,10 +134,9 @@ class DataReader():
 
             if word in sent_end:
                 if text[i+1][0].isupper(): #check conditions!!!
-                    sentence_text.append(text[start[0]:i+1])
-                    start = []
+                    sentence_text.append(text[start[0]:i])
+                    start = [i+1]
 
-#        print(pnwords)
         return sentence_text
 
 
@@ -164,6 +167,7 @@ class RandomVectorizer():
     #< Generate a random vector
     def random_vector(self):
         arr = np.zeros(self.dimensions)
+#        arr = np.random.normal(0, 0.1, self.dimensions)
 
         #< distribute (+1)'s and (-1)'s at random indices
         for i in range(0, self.random_elements):
@@ -310,13 +314,11 @@ class TermRelevance():
         #< to smooth or not to smooth, or to smooth, or not to smooth
         if df != 0:
             if self.smooth_idf:
-                inverse_df = math.log10(1+(self.documents_n/df))
+                return math.log10(1+(self.documents_n/df))
             else:
-                inverse_df = math.log10(self.documents_n/df)
+                return math.log10(self.documents_n/df)
         else:
             return 1 #< !!! identity element, no change in weight
-
-        return inverse_df
 
 
 #< Read a list of sentences and apply vector addition from context
@@ -343,12 +345,11 @@ class Contexter():
         vocabulary of word vectors
         >>> dict{word: {word_vector: [word_vector], random_vector: [random_vector]}}
     """
-    def __init__(self, vocabulary, contexttype = 1, window = 1, context_scope = 1, distance_weights = False, weights = False):
+    def __init__(self, vocabulary = False, contexttype = 1, window = 1, context_scope = 1, distance_weights = False, weights = False):
         self.vocabulary = vocabulary
         self.vocabt = defaultdict(dict)
 
-        self.window = window
-        self.contexttype = contexttype
+        self.contexttype, self.window = contexttype, window
 
         if self.contexttype == 0:
             context = 'CBOW'
@@ -364,7 +365,7 @@ class Contexter():
         self.data_info = {'name': 'Temporary data','context': context,'window': self.window, 'weights': 'tf-idf'} #< finetune
 
 
-    def process_data(self, texts, update = False):
+    def process_data(self, texts, return_vectors = True):
         """
         input: list of sentences
         output: dictionary of {word: updated word_vectors}
@@ -377,13 +378,21 @@ class Contexter():
             for doc in sent:
                 self.vocabt.update(self.read_contexts([li for li in doc]))
         else: #< scope is all of the text, input: [[doc1],[doc2]]
-            self.vocabt = self.read_contexts([w for li in texts for word in li for w in word])
+            self.vocabt = self.read_contexts([word for li in texts for word in li])
 
-        for item in self.vocabt:
-            for i, word in enumerate(self.vocabt[item]):
-                self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
+        #< updated vectors or context dictionary
+        if return_vectors:
+            if self.vocabulary:
+                for item in self.vocabt:
+                    for i, word in enumerate(self.vocabt[item]):
+                        self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
 
-        return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
+                return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
+            else:
+                return self.vocabt
+
+        else:
+            return self.vocabt
 
     #< only requires text, will always output contexts of every word
     def read_contexts(self, text):
@@ -439,31 +448,9 @@ class Contexter():
             return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
 
     def PPMImatrix(self, context_dict):
-        vocab = [x for x in context_dict]
-        total = sum([len(context_dict[x]) for x in context_dict])
-        PPMIdict = defaultdict(dict)
-        PPMIdict = {x: defaultdict(int) for x in context_dict.keys()}
-
-        PPMImatrix = np.ones((len(vocab), len(vocab)))
-        for n, w1 in enumerate(context_dict.keys()):
-            for i, entry in enumerate(context_dict[w1]):
-                PPMIdict[w1][entry] += 1
-
-        for w1 in PPMIdict:
-            for e in PPMIdict[w1]:
-                wc = PPMIdict[e][w1]
-                
-                P1 = wc/total #joint probability
-                P2 = sum([w for x in PPMIdict for w in PPMIdict[x].values() if x == w1])/total #word probability
-                P3 = sum([w for x in PPMIdict for w in PPMIdict[x].values() if x == e])/total #context word probability
-                PPMI = math.log(P1/(P2*P3),2)
-                if PPMI < 0:
-                    PPMI = 0
-
-                PPMImatrix[vocab.index(w1)][vocab.index(e)] = PPMI
-        
-        del PPMIdict     
-        return PPMImatrix, vocab             
+        for word in context_dict:
+            for cw in context_dict:
+                pass
 
 class Similarity():
     """
@@ -473,19 +460,20 @@ class Similarity():
         vocabulary of words and their word_vectors
         >>> dict{word:[word_vector]}
     """
-    def __init__(self, vocabulary):
+    def __init__(self, vocabulary, svd = False):
         self.vocabulary = vocabulary
         #vocab structure {word: [word_vector]}
+        self.svd = svd
+        if self.svd:
+            self.svder = TruncatedSVD(n_components=1024)
+            self.svder.fit([self.vocabulary[x] for x in self.vocabulary])
 
     def cosine_similarity(self, s_word1, s_word2):
         """
         input: string1, string2
         output: cosine similarity
         """
-        #< stem input
         word1, word2 = stem(s_word1), stem(s_word2)
-#DATAEXTRACTION        word1, word2 = s_word1, s_word2
-
         #< check if the words exists
         if word1 not in self.vocabulary.keys():
             return '{0} does not exist, try again\n'.format(s_word1)
@@ -495,7 +483,11 @@ class Similarity():
             i_word1 = self.vocabulary[word1]
             i_word2 = self.vocabulary[word2]
 
-#        print(i_word1)
+
+        if self.svd:
+            i_word1 = self.svder.transform(i_word1.reshape(1,-1))
+            i_word2 = self.svder.transform(i_word2.reshape(1,-1))
+
         cos_sim = pw.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
         return cos_sim[0][0] #self.cosine_measure(i_word1, i_word2)
 
@@ -549,7 +541,7 @@ class Similarity():
         #TODO handle division by zero ???
         if vec1 * vec2 <= 0:
             return 0
-            
+
         return dot_prod / (vec1 * vec2)
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
