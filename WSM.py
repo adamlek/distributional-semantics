@@ -32,11 +32,11 @@ class DataReader():
             nums: convert numbers to NUM (default: True)
             percs: convert percentages to PERC (default: True)
     """
-    def __init__(self, seperate = False, nums = True, perc = True):
+    def __init__(self, docsentences = False, nums = True, perc = True):
         self.vocab = set()
         self.doc_count = defaultdict(dict)
 
-        self.seperate = seperate
+        self.docsentences = docsentences
         self.current_doc = ""
         self.nums = nums
         self.perc = perc
@@ -84,7 +84,7 @@ class DataReader():
                 alltext.append(doc_sents)
 
         #< return as one list or one for each document
-        if not self.seperate:
+        if not self.docsentences:
             alltext = [s for x in alltext for s in x]
 
         #< cleanup
