@@ -4,12 +4,12 @@ Created on Mon Oct 17 13:29:13 2016
 @author: Adam Ek
 
 """
-from WordSpaceModeller import DataReader
-from WordSpaceModeller import RandomVectorizer
-from WordSpaceModeller import Weighter
-from WordSpaceModeller import Contexter
-from WordSpaceModeller import Similarity
-from WordSpaceModeller import DataOptions
+from WSM import DataReader
+from WSM import RandomVectorizer
+from WSM import TermRelevance
+from WSM import Contexter
+from WSM import Similarity
+from WSM import DataOptions
 
 import sys
 
@@ -34,6 +34,7 @@ def main():
         elif setup[0] == 'load':
             if not new_data:
                 try:
+                    dt = DataOptions()
                     word_vector_vocabulary, documents, data_info = dt.load(setup[1])
                     break
                 except Exception as e:
@@ -54,11 +55,8 @@ def main():
         elif setup[0] == 'apply':
             if new_data:
 
-                wgt = Weighter(documents)
-
-                for x in vector_vocabulary:
-                    vector_vocabulary[x]['random_vector'] = wgt.weight(x, vector_vocabulary[x]['random_vector'])
-
+                wgt = TermRelevance(documents)
+                vector_vocabulary = wgt.weight(vector_vocabulary)
                 #TODO: !!! handle weight_list
 
                 rc = Contexter(vector_vocabulary)
