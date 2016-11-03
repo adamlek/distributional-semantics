@@ -10,9 +10,9 @@ TODO: distance weights, WHAT WEIGHTS!?
 
 """
 import sklearn.metrics.pairwise as pw
-from sklearn.decomposition import TruncatedSVD
 from stemming.porter2 import stem #ENGLISH
 import numpy as np
+import numpy.linalg as la
 
 from collections import defaultdict
 import re
@@ -133,7 +133,7 @@ class DataReader():
 
             if word in sent_end:
                 if text[i+1][0].isupper(): #check conditions!!!
-                    sentence_text.append(text[start[0]:i])
+                    sentence_text.append(text[start[0]:i+1])
                     start = [i+1]
 
         return sentence_text
@@ -166,7 +166,7 @@ class RandomVectorizer():
     #< Generate a random vector
     def random_vector(self):
         arr = np.zeros(self.dimensions)
-#        arr = np.random.normal(0, 0.1, self.dimensions)
+#        arr = np.random.random(self.dimensions)
 
         #< distribute (+1)'s and (-1)'s at random indices
         for i in range(0, self.random_elements):
@@ -290,17 +290,23 @@ class TermRelevance():
             if word in self.document_dict[doc]:
                 #< log10 normalization
                 if self.scheme == 1:
-                    tf.append(1 + math.log10(self.document_dict[doc][word]/sum(self.document_dict[doc].values())))
+                    if (1 + math.log10(self.document_dict[doc][word]))/sum(self.document_dict[doc].values()) > 0:
+                        tf.append((1 + math.log10(self.document_dict[doc][word]))/sum(self.document_dict[doc].values()))
+                    else:
+                        tf.append(0)
                 #< Double normalization
                 elif self.scheme == 2:
                     max_val = max(self.document_dict[doc].values())
                     w1 = self.document_dict[doc][word]/sum(self.document_dict[doc].values())
                     w2 = max_val*(max_val/sum(self.document_dict[doc].values()))
 
-                    tf.append(0.5 + (0.5 * (w1/w2)))
+                    tf.append(0.4 + ((0.4 * w1)/w2))
                 #< raw term frequency, (freq/doc_freq)
                 else:
-                    tf.append(self.document_dict[doc][word]/sum(self.document_dict[doc].values()))
+                    if self.document_dict[doc][word]/sum(self.document_dict[doc].values()) > 0:
+                        tf.append(self.document_dict[doc][word]/sum(self.document_dict[doc].values()))
+                    else:
+                        tf.append(0)
 
         return sum(tf)
 
@@ -340,7 +346,7 @@ class Contexter():
         vocabulary of word vectors
         >>> dict{word: {word_vector: [word_vector], random_vector: [random_vector]}}
     """
-    def __init__(self, vocabulary = False, contexttype = 1, window = 1, context_scope = 1, distance_weights = False, weights = False):
+    def __init__(self, vocabulary = False, contexttype = 1, window = 1, context_scope = 2, distance_weights = False, weights = False):
         self.vocabulary = vocabulary
         self.vocabt = defaultdict(dict)
 
@@ -360,7 +366,7 @@ class Contexter():
         self.data_info = {'name': 'Temporary data','context': context,'window': self.window, 'weights': 'tf-idf'} #< finetune
 
 
-    def process_data(self, texts, return_vectors = True):
+    def process_data(self, texts, return_vectors = True, docs = False):
         """
         input: list of sentences
         output: dictionary of {word: updated word_vectors}
@@ -370,17 +376,24 @@ class Contexter():
             for sent in texts:
                 self.vocabt.update(self.read_contexts(sent))
         elif self.context_scope == 1: #< scope is each document, input: [[doc1],[doc2]]
-            for doc in sent:
-                self.vocabt.update(self.read_contexts([li for li in doc]))
+            for doc in texts:
+                self.vocabt.update(self.read_contexts([word for li in doc for word in li]))
         else: #< scope is all of the text, input: [[doc1],[doc2]]
             self.vocabt = self.read_contexts([word for li in texts for word in li])
+
+        if docs:
+            xpmi = PPMImatrix(docs)
 
         #< updated vectors or context dictionary
         if return_vectors:
             if self.vocabulary:
                 for item in self.vocabt:
                     for i, word in enumerate(self.vocabt[item]):
-                        self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
+                        if docs:
+                            if xpmi:
+                                self.vocabulary[item]['word_vector'] = self.vector_addition(item, word, sum(xpmi[word]))
+                        else:
+                            self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
 
                 return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
             else:
@@ -394,6 +407,9 @@ class Contexter():
         input: list of strings
         output: dictionary of {word: [words in context]}
         """
+        while '.' in text:
+            text.remove('.')
+
         word_contexts = defaultdict(list)
 
         for i, item in enumerate(text):
@@ -430,55 +446,57 @@ class Contexter():
 
         return word_contexts
 
-    def vector_addition(self, word, target_word):
+    def vector_addition(self, word, target_word, ew = False):
         """
         input: string1, string2
         output: word_vector
         """
-        if self.weights:
-            return self.vocabulary[word]['word_vector'] + (self.vocabulary[target_word]['random_vector'] * self.weights[word])
+        if ew:
+            return self.vocabulary[word]['word_vector'] + (self.vocabulary[target_word]['random_vector'] * ew)
         else:
             return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
 
-    def PPMImatrix(self, context_dict, documents):
+    def pmi(self, context_dict, documents):
         """
-        PMI = log( P((w1, c1)/N) / P(w1/N) * p(c1/N) ) 
-        
+        PMI = log( P((w1, c1)/N) / P(w1/N) * p(c1/N) )
+
         Get PMI for every word, in relation to the top 100 words.
-        1. iterate documents 
+        1. iterate documents
         2. find top x word counts
-        
-        0. new PMIdict { w1...wn: float }
+
+        0. new PMIdict { w1...wn: float1...floatn }
         1. iterate context_dict
         2. PMI: w1 => y for y in top x
             a tot(w1+y)/N
-            b tot(w1)*tot(y)/Non3
-            c a/b = PMI 
+            b tot(w1)*tot(y)/N
+            c a/b = PMI
             d update PMIdict w1 : y = PMI
         """
-        ntop = 50
+        ntop = 1000
         for d in documents:
             N = sum(documents[d].values())
             top = set()
             [top.add(y) for x in sorted(documents[d].values())[-ntop:] for y in documents[d] if documents[d][y] == x]
 #            print(top)
 
-        PPMIdict = defaultdict(dict)
+        pmidata = defaultdict(dict)
         for w in context_dict:
-            ww = documents[d][w]/N #Count of w1/total contexts(?)
-            for wc in top:
-                wwc = documents[d][wc]/N #Count of c1/total contexts(?)
-                IP = (ww*wwc)
-                JP = context_dict[w].count(wc)/N #count of w1 and c1/N
+            ws1 = sum([1 for x in context_dict for y in context_dict[x] for ww in context_dict[y] if ww == w])
+            w1 = ws1/N #Count of w1/total contexts(?)
+            for c in top:
+                cs1 = sum([1 for x in context_dict for y in context_dict[x] for ww in context_dict[y] if ww == c])
+                c1 = c1/N #Count of c1/total contexts(?)
+                IP = (w1*c1)
+                JP = context_dict[w].count(c1)/N #count of w1 and c1/N
                 if JP == 0:
                     continue
                 elif IP == 0:
                     continue
-                    
-                PPMIdict[w][wc] = math.log10(JP/IP)
-    
-        return PPMIdict
-                
+
+                pmidata[w][wc] = math.log10(JP/IP)
+
+        return pmidata
+
 class Similarity():
     """
     Cosine similarities between vectors
@@ -487,15 +505,15 @@ class Similarity():
         vocabulary of words and their word_vectors
         >>> dict{word:[word_vector]}
     """
-    def __init__(self, vocabulary, svd = False, pmi = False):
+    def __init__(self, vocabulary, pmi = False):
         self.vocabulary = vocabulary
         #vocab structure {word: [word_vector]}
-        self.svd = svd
-        if self.svd:
-            self.svder = TruncatedSVD(n_components=1024)
-            self.svder.fit([self.vocabulary[x] for x in self.vocabulary])
-        
+
         self.pmi = pmi
+
+    def norm(self, v):
+        tot = sum(v)
+        return np.array([round(x/tot) for x in v])
 
     def cosine_similarity(self, s_word1, s_word2, pmi = False):
         """
@@ -512,19 +530,14 @@ class Similarity():
             i_word1 = self.vocabulary[word1]
             i_word2 = self.vocabulary[word2]
 
-        if self.svd:
-            i_word1 = self.svder.transform(i_word1.reshape(1,-1))
-            i_word2 = self.svder.transform(i_word2.reshape(1,-1))
-            
-        print(sum(i_word1), '1')
-        print(sum(i_word2), '1')
-        if self.pmi:
-            print(sum(self.pmi[word1].values())) #if val == 0
-            print(sum(self.pmi[word2].values()))
-#            print(sum(i_word1), '2')
-#            print(sum(i_word2), '2')
+#        if self.pmi:
+#            print(sum(self.pmi[word1].values())) #if val == 0
+#            print(sum(self.pmi[word2].values()))
+#            i_word1 *= sum(self.pmi[word1].values())
+#            i_word2 *= sum(self.pmi[word2].values())
 
         cos_sim = pw.cosine_similarity(i_word1.reshape(1,-1), i_word2.reshape(1,-1))
+
         return cos_sim[0][0] #self.cosine_measure(i_word1, i_word2)
 
     #TODO: Maybe make prittier somehow? especially make more EFFICIENT! slow with large dataset
