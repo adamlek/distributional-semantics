@@ -31,7 +31,7 @@ DataReader:
 
     PARAMS:
         INIT:
-            seperate: Seperate sentences into document lists (default: False)
+            docsentences: organize sentences in [doc1[sents]doc2[sents]] (default: False)
             nums: convert numbers to NUM (default: True)
             percs: convert percentages to PERC (default: True)
 
@@ -83,6 +83,10 @@ TermRelevance:
 
     PARAMS:
         scheme: select a weighting scheme to use (default: 0)
+			standard = 0
+			log normalization = 1
+			souble norm/augmented = 2
+
         smooth_idf: smooth the idf weight log(1+(N/n))(default: False)
         doidf: compute idf (default: True)
 
@@ -93,15 +97,16 @@ TermRelevance:
 
         METHODS:
             weight: word/string and random vector, list of strings, dict{word: {random_vector: vector}}
-            
+            (weight calls the appropriate method below)
 			weight_list: list of strings
 			weight_vector: string, vector
 			weight_dict: dict{word: {random_vector: vector}}
-                tf: string
-                idf: string
+                
+			tf: string
+            idf: string
 
     OUTPUT:
-        weight: 
+        weight: Depends on data, see below
         weight_list: dict of weights
 		weight_vector: vector
 		weight_dict: dict
@@ -116,26 +121,34 @@ Contexter:
 
     PARAMS:
 		INIT:
-		    contexttype: Which type of context, CBOW or skipgram (default: CBOW)
+		    contexttype: Which type of context to use (default: CBOW)
+				CBOW = 0
+				skipgram = 1
 		    window: size of context, CBOW: how many words to take, skipgram: how many words to skip (default: 1)
-		    contextscope: set context boundry at sentence boundaries (default: 2)
+		    contextscope: set context boundries (default: 2)
+				sentence = 0
+				document = 1
+				corpus/entire text = 2
 		    distance_weights: give weights to words based on distance (default: False) TODO TODO TODO
-		    weights: do weighting in this class
+		    weights: do weighting in this class (default: False)
 		        >>> dict{word: weight}
+			readwrite: do vector additions as the data is read (default: True)
+			savecontext: save the context words (default: False)
 		preprocess_data:
 			return_vectors: return vectors or a dictionary of context words (default: True)
+			dopmi: compute PMI values (default: False, input = doc: {word: count})
 		
 
     INPUT:
         INIT:
-            vocabulary of word vectors or nothing( output is then {word: [words in context]} )
+            vocabulary of word vectors or nothing( output is then {word: [words in context]}, if save_context = True )
             >>> dict{word: {word_vector: [word_vector], random_vector: [random_vector]}}
 
         METHODS:
             process_data: sentences/text
-                read_contexts: sentence/text or list of sentences
-                vector_addition: string1, string2
-			PPMImatrix: dictionary of word: [words in context], dictionary of word count in documents(same as in TermRelevance)
+            read_contexts: sentence/text or list of sentences
+            vector_addition: string1, string2
+			PMI: dictionary of word: [words in context], dictionary of word count in documents(same input as in TermRelevance)
 
     OUTPUT:
         process_data: dictionary of {word: updated word_vectors}
@@ -199,11 +212,8 @@ Datareader
 
 	sentences
 	['australia', 'australian', 'appli', 'linguist', 'took', 'as', 'it', 'target', 'the', 'appli', 'linguist', 'of', 'mother', 'tongu', 'teach', 'and', 'teach', 'english', 'to', 'immigr'] 
-
 	['the', 'australia', 'NUM', 'tradit', 'show', 'a', 'strong', 'influenc', 'of', 'continent', 'europ', 'and', 'of', 'the', 'u.s.a.,', 'rather', 'NUM', 'than', 'of', 'britain'] 
-
 	['appli', 'linguist', 'associat', 'of', 'australia', 'alaa', 'was', 'establish', 'at', 'a', 'nation', 'congress', 'of', 'appli', 'linguist', 'held', 'in', 'august', 'NUM'] 
-
 	['alaa', 'hold', 'a', 'joint', 'annual', 'confer', 'in', 'collabor', 'with', 'the', 'associat', 'for', 'appli', 'linguist', 'in', 'new', 'zealand', 'alanz'] 
 
 	vocabulary:
@@ -236,7 +246,7 @@ Contexter
 	vectors:
 		{'rather': array([ 0.,  0.,  0., ...,  0.,  0.,  0.]), 'joint': array([ 0.,  0.,  0., ...,  0.,  0.,  0.])
 
-	PPMImatrix:
+	PMImatrix:
 		defaultdict(<class 'dict'>, {'of': {'congress': 1.1083394747888382, 'the': 0.5062794834608758, 'appli': 0.40936947045281946, 'continent': 1.1083394747888382,
 
 #main.py commands:
@@ -250,4 +260,16 @@ Contexter
 * "load name" to load saved data
 * "set setting value" change value of context or window size
 * "help" to display all commands
+
+#testing/benchmarks/results:
+WordSim353 (http://www.cs.technion.ac.il/~gabr/resources/data/wordsim353/)
+
+Top values:
+CBOW, log-tf, idf
+dims = 3072, random ind = 6
+
+rho = 3.32, 
+r = 0.29
+
+
 
