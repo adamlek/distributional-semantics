@@ -125,8 +125,8 @@ class DataReader():
                 sentence_text.append(text[start[0]:])
                 break
 
-            elif word[0].isupper():
-                start.append(i)
+#            elif word[0].isupper():
+#                start.append(i)
 #                if text[i+1][0].isupper() and len(start) > 1:
 #                    pnwords.append((i, i+1))
 #                    print(word, text[i+1])
@@ -231,7 +231,7 @@ class TermRelevance():
         output: see individual functions
         """
         if type(var) is str:
-            if var2:
+            if var2 != False:
                 return self.weight_vector(var, var2)
         elif type(var) is list:
             return self.weight_list(var)
@@ -346,7 +346,7 @@ class Contexter():
         vocabulary of word vectors
         >>> dict{word: {word_vector: [word_vector], random_vector: [random_vector]}}
     """
-    def __init__(self, vocabulary = False, contexttype = 1, window = 1, context_scope = 2, distance_weights = False, weights = False):
+    def __init__(self, vocabulary = False, contexttype = 1, window = 1, context_scope = 2, distance_weights = False, weights = False, readwrite=True, savecontext = False):
         self.vocabulary = vocabulary
         self.vocabt = defaultdict(dict)
 
@@ -360,11 +360,16 @@ class Contexter():
 
         self.distance_weights = distance_weights #TODO add weighting at self.word_addition
         self.context_scope = context_scope
-
         self.weights = weights
 
+        if not readwrite and not savecontext:
+            self.readwrite = True
+            self.savecontext = False
+        else:
+            self.savecontext = savecontext
+            self.readwrite = readwrite
         self.data_info = {'name': 'Temporary data','context': context,'window': self.window, 'weights': 'tf-idf'} #< finetune
-
+        self.iters = 0
 
     def process_data(self, texts, return_vectors = True, docs = False):
         """
@@ -374,26 +379,34 @@ class Contexter():
 
         if self.context_scope == 0: #< scope is sentences
             for sent in texts:
-                self.vocabt.update(self.read_contexts(sent))
+                if self.savecontext:
+                    self.vocabt.update(self.read_contexts(sent))
+                else:
+                    self.read_contexts(sent)
+
         elif self.context_scope == 1: #< scope is each document, input: [[doc1],[doc2]]
             for doc in texts:
                 self.vocabt.update(self.read_contexts([word for li in doc for word in li]))
         else: #< scope is all of the text, input: [[doc1],[doc2]]
-            self.vocabt = self.read_contexts([word for li in texts for word in li])
+            if self.savecontext:
+                self.vocabt = self.read_contexts([word for li in texts for word in li])
+            else:
+                self.read_contexts([word for li in texts for word in li])
 
         if docs:
             xpmi = PPMImatrix(docs)
 
-        #< updated vectors or context dictionary
+        #< updated vectors or context dictionary readwrite AND savecontext = False?? What happens? Nothing...
         if return_vectors:
             if self.vocabulary:
-                for item in self.vocabt:
-                    for i, word in enumerate(self.vocabt[item]):
-                        if docs:
-                            if xpmi:
-                                self.vocabulary[item]['word_vector'] = self.vector_addition(item, word, sum(xpmi[word]))
-                        else:
-                            self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
+                if not self.readwrite:
+                    for item in self.vocabt:
+                        for i, word in enumerate(self.vocabt[item]):
+                            if docs:
+                                if xpmi:
+                                    self.vocabulary[item]['word_vector'] = self.vector_addition(item, word, sum(xpmi[word]))
+                            else:
+                                self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
 
                 return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
             else:
@@ -407,6 +420,7 @@ class Contexter():
         input: list of strings
         output: dictionary of {word: [words in context]}
         """
+        self.iters += 1
         while '.' in text:
             text.remove('.')
 
@@ -442,6 +456,10 @@ class Contexter():
                     context.append(text[i+1+self.window])
 
             if context:
+                if self.readwrite:
+                    for word in context:
+                        self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
+
                 word_contexts[item] += context
 
         return word_contexts
@@ -485,7 +503,7 @@ class Contexter():
             w1 = ws1/N #Count of w1/total contexts(?)
             for c in top:
                 cs1 = sum([1 for x in context_dict for y in context_dict[x] for ww in context_dict[y] if ww == c])
-                c1 = c1/N #Count of c1/total contexts(?)
+                c1 = cs1/N #Count of c1/total contexts(?)
                 IP = (w1*c1)
                 JP = context_dict[w].count(c1)/N #count of w1 and c1/N
                 if JP == 0:
