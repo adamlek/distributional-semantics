@@ -35,46 +35,47 @@ def load_oldsave():
 def new_save():
     plotting = False
     teststuff = True
+    save = False
 
 #    dataset1 = ['/home/usr1/git/dist_data/test_doc_5.txt']
 #    dataset1 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/austen-persuasion.txt', '/home/usr1/git/dist_data/austen-sense.txt']
 #    dataset1 = ['/home/usr1/git/dist_data/reut1.txt', '/home/usr1/git/dist_data/reut2.txt']
     dataset1 = ['/home/usr1/git/dist_data/formatted2.txt', '/home/usr1/git/dist_data/reut1.txt', '/home/usr1/git/dist_data/reut2.txt']
-#    dataset1 = ['/home/usr1/git/dist_data/formatted2.txt', '/home/usr1/git/dist_data/test_doc_5.txt', '/home/usr1/git/dist_data/test_doc_1.txt', '/home/usr1/git/dist_data/test_doc_3.txt']
+#    dataset1 = ['/home/usr1/git/dist_data/formatted2.txt']
 
 #DATAREADER
 ##################################################
-    dr = DataReader()
+    dr = DataReader(docsentences=False)
     #read the file dataset1 and output all sentences, all words, and information about word count/documents
     sentences, vocabulary, documents = dr.preprocess_data(dataset1)
 
-    print(len(sentences))
+
 #    for sent in sentences:
 #        print(sent, '\n')
-
+    print('sentences:\t', len(sentences))
     t = 0
     for v in documents:
         t += sum(documents[v].values())
-    print(t, 'total tokens')
-    print(len(vocabulary), 'total types')
+    print('total tokens:\t', t)
+    print('total types:\t', len(vocabulary))
 
-    print('reading file done')
+    print('reading file done\n')
 ##################################################
 
     #SETTINGS
-    w, t, s, d, r = 1, 0, 2, 3072, 6
-    print(w, t, s, d, r)
-
-
+    w, t, s = 1, 1, 2
+    d, r = 2024, 16
+    si1, si2, si3 = 3, 5, 10
+    print('weighting:\t', w, t, s)
+    print('vectors:  \t', d, r)
+    print('sizes:    \t', si1, si2, si3)
 ##RANDOMVECTORIZER
 ###################################################
     rv = RandomVectorizer(dimensions=d, random_elements=r)
     #create word and random vectors for the strings in vocabulary
     vectors = rv.vocabulary_vectorizer(vocabulary)
-
-    print('vectoring done')
 ###################################################
-
+#
 ##WEIGHTER
 ###################################################
     #init Weighter, with scheme 0 and don't do idf
@@ -82,15 +83,14 @@ def new_save():
 
     #weight the dictionary of vectors
     vectors = tr.weight(vectors)
-
 ##################################################
 #
 ##CONTEXTER
 ##################################################
     #Init Contexter
-    cont1 = Contexter(vectors, contexttype=t, window=1, context_scope=s)
-    cont5 = Contexter(vectors, contexttype=t, window=5, context_scope=s)
-    cont10 = Contexter(vectors, contexttype=t, window=10, context_scope=s)
+    cont1 = Contexter(vectors, contexttype=t, window=si1, context_scope=s)
+    cont5 = Contexter(vectors, contexttype=t, window=si2, context_scope=s)
+    cont10 = Contexter(vectors, contexttype=t, window=si3, context_scope=s)
 
     vector_vocabulary1 = cont1.process_data(sentences)
     vector_vocabulary5 = cont5.process_data(sentences)
@@ -106,8 +106,6 @@ def new_save():
 #    xpmi5 = cont5.PPMImatrix(cont_dict5, documents)
 #    xpmi10 = cont10.PPMImatrix(cont_dict10, documents)
 
-
-    print('reading contexts done')
 ###################################################
 #
 ##DATAOPTIONS
@@ -129,49 +127,40 @@ def new_save():
     sim5 = Similarity(vector_vocabulary5)
     sim10 = Similarity(vector_vocabulary10)
 
-    with open('/home/usr1/git/dist_data/combined.csv') as f:
-        with open('/home/usr1/git/dist_data/combined1.csv', 'w') as res:
-            csv_wr = csv.writer(res, delimiter=',')
-            for i, ln in enumerate(f):
-                ln = ln.lower().rstrip().split(',')
-                s1 = sim1.cosine_similarity(ln[0], ln[1])
-                s5 = sim5.cosine_similarity(ln[0], ln[1])
-                s10 = sim10.cosine_similarity(ln[0], ln[1])
-
-                try:
-                    o = float(s1)
-                    oo = float(s5)
-                    ooo = float(s10)
-
-                except Exception as e:
-                    continue
-
-                csv_wr.writerow([ln[0], ln[1], ln[2], s1, s5, s10])
-
-#PEARSON SPEARMAN TESTING
-#################################################
     if teststuff:
-        with open('/home/usr1/git/dist_data/combined1.csv') as f:
-            humanv = []
-            riv1 = []
-            riv5 = []
-            riv10 = []
-            for i, ln in enumerate(f):
-                ln = ln.rstrip().split(',')
+        humanv = []
+        riv1 = []
+        riv5 = []
+        riv10 = []
+        with open('/home/usr1/git/dist_data/combined.csv') as f:
+                for i, ln in enumerate(f):
+                    ln = ln.lower().rstrip().split(',')
 
-                humanv.append(float(ln[2]))
-                riv1.append(float(ln[3]))
-                riv5.append(float(ln[4]))
-                riv10.append(float(ln[5]))
+                    try:
+                        riv1.append(float(sim1.cosine_similarity(ln[0], ln[1])))
+                        riv5.append(float(sim5.cosine_similarity(ln[0], ln[1])))
+                        riv10.append(float(sim10.cosine_similarity(ln[0], ln[1])))
+                        humanv.append(float(ln[2]))
 
+                    except Exception as e:
+                        continue
 
         print(len(humanv), len(riv1), len(riv5), len(riv10))
         print(st.stats.spearmanr(humanv, riv1))
-        print('pearson r, p-val', st.pearsonr(humanv,riv1), '1\n')
+        print('pearson r, p-val', st.pearsonr(humanv,riv1), si1, '\n')
         print(st.stats.spearmanr(humanv, riv5))
-        print('pearson r, p-val', st.pearsonr(humanv,riv5), '5\n')
+        print('pearson r, p-val', st.pearsonr(humanv,riv5), si2, '\n')
         print(st.stats.spearmanr(humanv, riv10))
-        print('pearson r, p-val', st.pearsonr(humanv,riv10), '10\n')
+        print('pearson r, p-val', st.pearsonr(humanv,riv10), si3, '\n')
+
+#PEARSON SPEARMAN TESTING
+#################################################
+    if save:
+        with open('/home/usr1/git/dist_data/combined1.csv') as f:
+            csv_w = csv.writer(f, delimiter=',')
+            for i, v in humanv:
+                scv_w.writerow(v, riv1[i], riv5[i], riv10[i])
+
 
 #TSNE PLOTTING
 ##################################################
@@ -179,7 +168,7 @@ def new_save():
         ar = []
         lbs = []
         for i, v in enumerate(vector_vocabulary5):
-            if i%5 == 0:
+            if i%100 == 0:
                 ar.append(vector_vocabulary5[v])
                 lbs.append(v)
 
