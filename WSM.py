@@ -231,7 +231,7 @@ class TermRelevance():
         output: see individual functions
         """
         if type(var) is str:
-            if var2 != False:
+            if type(var2) is np.ndarray:
                 return self.weight_vector(var, var2)
         elif type(var) is list:
             return self.weight_list(var)
@@ -371,11 +371,14 @@ class Contexter():
         self.data_info = {'name': 'Temporary data','context': context,'window': self.window, 'weights': 'tf-idf'} #< finetune
         self.iters = 0
 
-    def process_data(self, texts, return_vectors = True, docs = False):
+    def process_data(self, texts, return_vectors = True, docs_count = False, add_pmi=False):
         """
         input: list of sentences
         output: dictionary of {word: updated word_vectors}
         """
+        if add_pmi:
+            self.readwrite = False
+            self.savecontext = True
 
         if self.context_scope == 0: #< scope is sentences
             for sent in texts:
@@ -393,8 +396,8 @@ class Contexter():
             else:
                 self.read_contexts([word for li in texts for word in li])
 
-        if docs:
-            xpmi = PPMImatrix(docs)
+        if docs_count:
+            xpmi = self.pmi(docs_count, self.vocabt)
 
         #< updated vectors or context dictionary readwrite AND savecontext = False?? What happens? Nothing...
         if return_vectors:
@@ -402,7 +405,7 @@ class Contexter():
                 if not self.readwrite:
                     for item in self.vocabt:
                         for i, word in enumerate(self.vocabt[item]):
-                            if docs:
+                            if add_pmi:
                                 if xpmi:
                                     self.vocabulary[item]['word_vector'] = self.vector_addition(item, word, sum(xpmi[word]))
                             else:
@@ -474,7 +477,7 @@ class Contexter():
         else:
             return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
 
-    def pmi(self, context_dict, documents):
+    def pmi(self, context_dict, docs_count):
         """
         PMI = log( P((w1, c1)/N) / P(w1/N) * p(c1/N) )
 
@@ -492,26 +495,27 @@ class Contexter():
         """
         ntop = 1000
         for d in documents:
-            N = sum(documents[d].values())
+            #< sum of all words in another words context
+            N = sum([1 for x in context_dict for y in context_dict[x]])
+            #< Find top n words
             top = set()
-            [top.add(y) for x in sorted(documents[d].values())[-ntop:] for y in documents[d] if documents[d][y] == x]
-#            print(top)
+            [top.add(y) for x in sorted(docs_count[d].values())[-ntop:] for y in docs_count[d] if docs_count[d][y] == x]
 
         pmidata = defaultdict(dict)
         for w in context_dict:
             ws1 = sum([1 for x in context_dict for y in context_dict[x] for ww in context_dict[y] if ww == w])
-            w1 = ws1/N #Count of w1/total contexts(?)
+            w1 = ws1/N #< independent probability of w1
             for c in top:
                 cs1 = sum([1 for x in context_dict for y in context_dict[x] for ww in context_dict[y] if ww == c])
-                c1 = cs1/N #Count of c1/total contexts(?)
+                c1 = cs1/N #< independent probability of c1
                 IP = (w1*c1)
-                JP = context_dict[w].count(c1)/N #count of w1 and c1/N
+                JP = context_dict[w].count(c1)/N #< join probability of w1 + c1
                 if JP == 0:
                     continue
                 elif IP == 0:
                     continue
 
-                pmidata[w][wc] = math.log10(JP/IP)
+                pmidata[w][c] = math.log10(JP/IP)
 
         return pmidata
 
@@ -549,8 +553,6 @@ class Similarity():
             i_word2 = self.vocabulary[word2]
 
 #        if self.pmi:
-#            print(sum(self.pmi[word1].values())) #if val == 0
-#            print(sum(self.pmi[word2].values()))
 #            i_word1 *= sum(self.pmi[word1].values())
 #            i_word2 *= sum(self.pmi[word2].values())
 
