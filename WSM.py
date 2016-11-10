@@ -35,7 +35,8 @@ class DataReader():
     def __init__(self, docsentences = False, nums = True, perc = True):
         self.vocab = set()
         self.doc_count = defaultdict(dict)
-
+#        self.text = list
+        
         self.docsentences = docsentences
         self.current_doc = ""
         self.nums = nums
@@ -167,6 +168,7 @@ class RandomVectorizer():
     def random_vector(self):
         arr = np.zeros(self.dimensions)
 #        arr = np.random.random(self.dimensions)
+#        arr1 = np.zeros([6,171])
 
         #< distribute (+1)'s and (-1)'s at random indices
         for i in range(0, self.random_elements):
@@ -346,7 +348,7 @@ class Contexter():
         vocabulary of word vectors
         >>> dict{word: {word_vector: [word_vector], random_vector: [random_vector]}}
     """
-    def __init__(self, vocabulary = False, contexttype = 1, window = 1, context_scope = 2, distance_weights = False, weights = False, readwrite=True, savecontext = False):
+    def __init__(self, vocabulary = False, contexttype = 1, window = 1, context_scope = 2, distance_weights = False, weights = False, readwrite=True, savecontext = True):
         self.vocabulary = vocabulary
         self.vocabt = defaultdict(dict)
 
@@ -397,26 +399,31 @@ class Contexter():
                 self.read_contexts([word for li in texts for word in li])
 
         if docs_count:
-            xpmi = self.pmi(docs_count, self.vocabt)
+            xpmi = self.pmi(self.vocabt, docs_count)
 
         #< updated vectors or context dictionary readwrite AND savecontext = False?? What happens? Nothing...
         if return_vectors:
             if self.vocabulary:
+                ########
                 if not self.readwrite:
                     for item in self.vocabt:
                         for i, word in enumerate(self.vocabt[item]):
                             if add_pmi:
                                 if xpmi:
                                     self.vocabulary[item]['word_vector'] = self.vector_addition(item, word, sum(xpmi[word]))
+                                else:
+                                    print('No PMI data')
+                                    break
                             else:
                                 self.vocabulary[item]['word_vector'] = self.vector_addition(item, word)
 
                 return {x: self.vocabulary[x]['word_vector'] for x in self.vocabulary}
             else:
+                print('No vocabulary present')
                 return self.vocabt
 
-        else:
-            return self.vocabt
+
+        return self.vocabt
 
     def read_contexts(self, text):
         """
@@ -476,6 +483,9 @@ class Contexter():
             return self.vocabulary[word]['word_vector'] + (self.vocabulary[target_word]['random_vector'] * ew)
         else:
             return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
+            
+    def vector_sections(self, vector):
+        
 
     def pmi(self, context_dict, docs_count):
         """
@@ -483,33 +493,39 @@ class Contexter():
 
         Get PMI for every word, in relation to the top 100 words.
         1. iterate documents
-        2. find top x word counts
+        2. find total words in context + total words in context ^ 2(PPMI) 
+        3. find top x word counts
 
         0. new PMIdict { w1...wn: float1...floatn }
         1. iterate context_dict
         2. PMI: w1 => y for y in top x
-            a tot(w1+y)/N
-            b tot(w1)*tot(y)/N
-            c a/b = PMI
-            d update PMIdict w1 : y = PMI
+            a tot(w1+y)+1/N
+            b tot(w1+1)*tot(y+1)/N
+            c a/b = PPMI
+            d update pmidata {w1 : {y : PMI }}
         """
-        ntop = 1000
-        for d in documents:
+        ntop = 10
+        for d in docs_count:
             #< sum of all words in another words context
             N = sum([1 for x in context_dict for y in context_dict[x]])
+            N = N+N**2 #> Positive Pointwise Mutual Information            
+            print(N)
             #< Find top n words
             top = set()
             [top.add(y) for x in sorted(docs_count[d].values())[-ntop:] for y in docs_count[d] if docs_count[d][y] == x]
 
         pmidata = defaultdict(dict)
-        for w in context_dict:
-            ws1 = sum([1 for x in context_dict for y in context_dict[x] for ww in context_dict[y] if ww == w])
+        for i, w in enumerate(context_dict):
+            if i%100 == 0:
+                print('Word no: {0}, {1}'.format(i, w))
+                
+            ws1 = sum([1 for x in context_dict for y in context_dict[x] for ww in context_dict[y] if ww == w])+1
             w1 = ws1/N #< independent probability of w1
             for c in top:
-                cs1 = sum([1 for x in context_dict for y in context_dict[x] for ww in context_dict[y] if ww == c])
+                cs1 = sum([1 for x in context_dict for y in context_dict[x] for ww in context_dict[y] if ww == c])+1
                 c1 = cs1/N #< independent probability of c1
                 IP = (w1*c1)
-                JP = context_dict[w].count(c1)/N #< join probability of w1 + c1
+                JP = context_dict[w].count(c1)+1/N #< join probability of w1 + c1
                 if JP == 0:
                     continue
                 elif IP == 0:
@@ -551,6 +567,9 @@ class Similarity():
         else:
             i_word1 = self.vocabulary[word1]
             i_word2 = self.vocabulary[word2]
+            
+#        i_word1 = self.norm(i_word1)
+#        i_word2 = self.norm(i_word2)
 
 #        if self.pmi:
 #            i_word1 *= sum(self.pmi[word1].values())
@@ -579,7 +598,7 @@ class Similarity():
         for target_word in self.vocabulary:
             if target_word == word:
                 continue
-
+            #####!!! test with la.norm + random
 #            cs = self.cosine_measure(word_vec, self.vocabulary[target_word]['word_vector'])
             cs = pw.cosine_similarity(word_vec.reshape(1,-1), self.vocabulary[target_word].reshape(1,-1))
 
