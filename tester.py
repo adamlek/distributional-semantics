@@ -40,8 +40,8 @@ def new_save():
 #    dataset1 = ['/home/usr1/git/dist_data/test_doc_5.txt']
 #    dataset1 = ['/home/usr1/git/dist_data/austen-emma.txt', '/home/usr1/git/dist_data/austen-persuasion.txt', '/home/usr1/git/dist_data/austen-sense.txt']
 #    dataset1 = ['/home/usr1/git/dist_data/reut1.txt', '/home/usr1/git/dist_data/reut2.txt']
-    dataset1 = ['/home/usr1/git/dist_data/formatted2.txt', '/home/usr1/git/dist_data/reut1.txt', '/home/usr1/git/dist_data/reut2.txt']
-#    dataset1 = ['/home/usr1/git/dist_data/formatted2.txt']
+#    dataset1 = ['/home/usr1/git/dist_data/formatted2.txt', '/home/usr1/git/dist_data/reut1.txt', '/home/usr1/git/dist_data/reut2.txt']
+    dataset1 = ['/home/usr1/git/dist_data/form2.txt']
 
 #DATAREADER
 ##################################################
@@ -63,9 +63,9 @@ def new_save():
 ##################################################
 
     #SETTINGS
-    w, t, s = 1, 1, 2
-    d, r = 2024, 16
-    si1, si2, si3 = 3, 5, 10
+    w, t, s = 1, 0, 2
+    d, r = 1024, 6
+    si1, si2, si3 = 1, 5, 10
     print('weighting:\t', w, t, s)
     print('vectors:  \t', d, r)
     print('sizes:    \t', si1, si2, si3)
@@ -74,28 +74,35 @@ def new_save():
     rv = RandomVectorizer(dimensions=d, random_elements=r)
     #create word and random vectors for the strings in vocabulary
     vectors = rv.vocabulary_vectorizer(vocabulary)
+    print('Vectors done')
 ###################################################
 #
 ##WEIGHTER
 ###################################################
     #init Weighter, with scheme 0 and don't do idf
-    tr = TermRelevance(documents, scheme=w, doidf=True, smooth_idf=False)
+    tr = TermRelevance(documents, scheme=w, doidf=False, smooth_idf=False)
 
     #weight the dictionary of vectors
     vectors = tr.weight(vectors)
+    print('Weights done')
+    for v in tr.word_weights:
+        for d in documents:
+            cv = documents[d][v]
+            print(v, tr.word_weights[v], cv)
 ##################################################
 #
 ##CONTEXTER
 ##################################################
     #Init Contexter
     cont1 = Contexter(vectors, contexttype=t, window=si1, context_scope=s)
-    cont5 = Contexter(vectors, contexttype=t, window=si2, context_scope=s)
-    cont10 = Contexter(vectors, contexttype=t, window=si3, context_scope=s)
+#    cont5 = Contexter(vectors, contexttype=t, window=si2, context_scope=s)
+#    cont10 = Contexter(vectors, contexttype=t, window=si3, context_scope=s)
 
     vector_vocabulary1 = cont1.process_data(sentences)
-    vector_vocabulary5 = cont5.process_data(sentences)
-    vector_vocabulary10 = cont10.process_data(sentences)
+#    vector_vocabulary5 = cont5.process_data(sentences)
+#    vector_vocabulary10 = cont10.process_data(sentences)
     #poor computah :()
+    print('Reading contexts done')
 
 #    cont_dict1 = cont1.vocabt
 #    cont_dict5 = cont5.vocabt
@@ -124,8 +131,8 @@ def new_save():
 #    sim5 = Similarity(vector_vocabulary5, pmi = xpmi5)
 #    sim10 = Similarity(vector_vocabulary10, pmi = xpmi10)
     sim1 = Similarity(vector_vocabulary1)
-    sim5 = Similarity(vector_vocabulary5)
-    sim10 = Similarity(vector_vocabulary10)
+#    sim5 = Similarity(vector_vocabulary5)
+#    sim10 = Similarity(vector_vocabulary10)
 
     if teststuff:
         humanv = []
@@ -138,8 +145,8 @@ def new_save():
 
                     try:
                         riv1.append(float(sim1.cosine_similarity(ln[0], ln[1])))
-                        riv5.append(float(sim5.cosine_similarity(ln[0], ln[1])))
-                        riv10.append(float(sim10.cosine_similarity(ln[0], ln[1])))
+#                        riv5.append(float(sim5.cosine_similarity(ln[0], ln[1])))
+#                        riv10.append(float(sim10.cosine_similarity(ln[0], ln[1])))
                         humanv.append(float(ln[2]))
 
                     except Exception as e:
@@ -148,18 +155,18 @@ def new_save():
         print(len(humanv), len(riv1), len(riv5), len(riv10))
         print(st.stats.spearmanr(humanv, riv1))
         print('pearson r, p-val', st.pearsonr(humanv,riv1), si1, '\n')
-        print(st.stats.spearmanr(humanv, riv5))
-        print('pearson r, p-val', st.pearsonr(humanv,riv5), si2, '\n')
-        print(st.stats.spearmanr(humanv, riv10))
-        print('pearson r, p-val', st.pearsonr(humanv,riv10), si3, '\n')
+#        print(st.stats.spearmanr(humanv, riv5))
+#        print('pearson r, p-val', st.pearsonr(humanv,riv5), si2, '\n')
+#        print(st.stats.spearmanr(humanv, riv10))
+#        print('pearson r, p-val', st.pearsonr(humanv,riv10), si3, '\n')
 
 #PEARSON SPEARMAN TESTING
 #################################################
-    if save:
-        with open('/home/usr1/git/dist_data/combined1.csv') as f:
-            csv_w = csv.writer(f, delimiter=',')
-            for i, v in humanv:
-                scv_w.writerow(v, riv1[i], riv5[i], riv10[i])
+#    if save:
+#        with open('/home/usr1/git/dist_data/combined1.csv') as f:
+#            csv_w = csv.writer(f, delimiter=',')
+#            for i, v in humanv:
+#                scv_w.writerow(v, riv1[i], riv5[i], riv10[i])
 
 
 #TSNE PLOTTING
@@ -167,9 +174,9 @@ def new_save():
     if plotting:
         ar = []
         lbs = []
-        for i, v in enumerate(vector_vocabulary5):
+        for i, v in enumerate(vector_vocabulary1):
             if i%100 == 0:
-                ar.append(vector_vocabulary5[v])
+                ar.append(vector_vocabulary1[v])
                 lbs.append(v)
 
         Y = tsne.tsne(np.array(ar), 2, 50, 20.0)
