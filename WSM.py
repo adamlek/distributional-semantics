@@ -35,7 +35,6 @@ class DataReader():
     def __init__(self, docsentences = False, nums = True, perc = True):
         self.vocab = set()
         self.doc_count = defaultdict(dict)
-#        self.text = list
         
         self.docsentences = docsentences
         self.current_doc = ""
@@ -126,12 +125,6 @@ class DataReader():
                 sentence_text.append(text[start[0]:])
                 break
 
-#            elif word[0].isupper():
-#                start.append(i)
-#                if text[i+1][0].isupper() and len(start) > 1:
-#                    pnwords.append((i, i+1))
-#                    print(word, text[i+1])
-
             if word in sent_end:
                 if text[i+1][0].isupper(): #check conditions!!!
                     sentence_text.append(text[start[0]:i+1])
@@ -167,8 +160,6 @@ class RandomVectorizer():
     #< Generate a random vector
     def random_vector(self):
         arr = np.zeros(self.dimensions)
-#        arr = np.random.random(self.dimensions)
-#        arr1 = np.zeros([6,171])
 
         #< distribute (+1)'s and (-1)'s at random indices
         for i in range(0, self.random_elements):
@@ -264,7 +255,6 @@ class TermRelevance():
 
         #< save weights for lookup
         self.word_weights[word] = weight
-        #< return vector * tf-idf, save tfidf value for future info???
         return vector * weight
 
     def weight_list(self, wordlist):
@@ -404,7 +394,6 @@ class Contexter():
         #< updated vectors or context dictionary readwrite AND savecontext = False?? What happens? Nothing...
         if return_vectors:
             if self.vocabulary:
-                ########
                 if not self.readwrite:
                     for item in self.vocabt:
                         for i, word in enumerate(self.vocabt[item]):
@@ -483,8 +472,6 @@ class Contexter():
             return self.vocabulary[word]['word_vector'] + (self.vocabulary[target_word]['random_vector'] * ew)
         else:
             return self.vocabulary[word]['word_vector'] + self.vocabulary[target_word]['random_vector']
-            
-    def vector_sections(self, vector):
         
 
     def pmi(self, context_dict, docs_count):
@@ -508,8 +495,7 @@ class Contexter():
         for d in docs_count:
             #< sum of all words in another words context
             N = sum([1 for x in context_dict for y in context_dict[x]])
-            N = N+N**2 #> Positive Pointwise Mutual Information            
-            print(N)
+            N = N+N**2 #> Positive Pointwise Mutual Information, add +1 to each cell            
             #< Find top n words
             top = set()
             [top.add(y) for x in sorted(docs_count[d].values())[-ntop:] for y in docs_count[d] if docs_count[d][y] == x]
@@ -544,9 +530,7 @@ class Similarity():
         >>> dict{word:[word_vector]}
     """
     def __init__(self, vocabulary, pmi = False):
-        self.vocabulary = vocabulary
-        #vocab structure {word: [word_vector]}
-
+        self.vocabulary = vocabulary #<vocab structure {word: [word_vector]}
         self.pmi = pmi
 
     def norm(self, v):
@@ -567,9 +551,6 @@ class Similarity():
         else:
             i_word1 = self.vocabulary[word1]
             i_word2 = self.vocabulary[word2]
-            
-#        i_word1 = self.norm(i_word1)
-#        i_word2 = self.norm(i_word2)
 
 #        if self.pmi:
 #            i_word1 *= sum(self.pmi[word1].values())
@@ -598,7 +579,6 @@ class Similarity():
         for target_word in self.vocabulary:
             if target_word == word:
                 continue
-            #####!!! test with la.norm + random
 #            cs = self.cosine_measure(word_vec, self.vocabulary[target_word]['word_vector'])
             cs = pw.cosine_similarity(word_vec.reshape(1,-1), self.vocabulary[target_word].reshape(1,-1))
 
