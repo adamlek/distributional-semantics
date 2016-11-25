@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Oct 17 22:21:38 2016
-@author: Adam Ek
+Copyright (c) 2016 Adam Ek
+"""
+"""
 
 TODO Come up with some fucking good method/function names?
 
